@@ -1,0 +1,17 @@
+typeDeclarations
+    int a = 10;
+    int b = 32;
+endTypeDeclarations
+
+subprograms
+    fun soma(int a, int b) -> int 
+        return a + b;
+    endFun
+endSubprograms
+
+program
+    int x = 2;
+    int y = 33;
+
+    soma(x, y);
+end

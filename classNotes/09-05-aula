@@ -1,0 +1,10 @@
+Funções em Haskell para auxiliar na simulação da linguagem de programação em deselvolvimento.
+
+Existe insert, update, remove.
+
+E aí ele tbm cria o assign, acho que nele usa o update.
+
+Citação: Durante o processamento, ele descobre que x é um id, associado com o tipo inteiro e está associado com 0. 
+Depois, ele passa a associar com 1. A partir de agora, ele tem a memoria manuseada. 
+
+--Arquivos diferentes em haskell para organização.
