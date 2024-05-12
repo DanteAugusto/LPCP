@@ -16,6 +16,11 @@ tokens :-
   
   typeDeclarations                { \p s -> TypeDeclarations p }
   endTypeDeclarations             { \p s -> EndTypeDeclarations p }
+  type                            { \p s -> Type p }
+  endType                         { \p s -> EndType p }
+
+  globalVariables                 { \p s -> GlobalVariables p }
+  endGlobalVariables              { \p s -> EndGlobalVariables p }
 
   subprograms                     { \p s -> Subprograms p }
   endSubprograms                  { \p s -> EndSubprograms p }
@@ -31,10 +36,15 @@ tokens :-
   "->"                            { \p s -> Arrow p }
   "+"                             { \p s -> Plus p }
   "="                             { \p s -> Assign p }
+  "("                             { \p s -> OpenParent p }
+  ")"                             { \p s -> CloseParent p }
+  ","                             { \p s -> Comma p }
 
   int                             { \p s -> Int p }
+  double                          { \p s -> Double p }
   
   $digit+	                            { \p s -> IntLit p (read s) }
+  $digit+\.$digit+	                  { \p s -> DoubleLit p (read s) }
   $lowerAlpha [$alpha $digit \_]*	    { \p s -> Id p s }
   $upperAlpha [$alpha $digit \_]*	    { \p s -> TypeId p s }
 
@@ -46,6 +56,10 @@ tokens :-
 data Token =
   TypeDeclarations     AlexPosn        |
   EndTypeDeclarations  AlexPosn        |
+  Type                 AlexPosn        |                 
+  EndType              AlexPosn        |
+  GlobalVariables      AlexPosn        |
+  EndGlobalVariables   AlexPosn        |
   Subprograms          AlexPosn        |
   EndSubprograms       AlexPosn        |
   Program              AlexPosn        |
@@ -57,17 +71,22 @@ data Token =
   Arrow                AlexPosn        |
   Plus                 AlexPosn        |
   Assign               AlexPosn        |
+  OpenParent           AlexPosn        |
+  CloseParent          AlexPosn        |
+  Comma                AlexPosn        |
   Int                  AlexPosn        |
-  Sym                  AlexPosn Char   |
-  Var                  AlexPosn String |
-  Int                  AlexPosn Int
+  Double               AlexPosn        |
+  IntLit               AlexPosn Int    |
+  DoubleLit            AlexPosn Double |
+  Id                   AlexPosn String |
+  TypeId               AlexPosn String 
   deriving (Eq,Show)
 
-token_posn (Let p) = p
-token_posn (In p) = p
-token_posn (Sym p _) = p
-token_posn (Var p _) = p
-token_posn (Int p _) = p
+token_posn (Double p) = p
+-- token_posn (In p) = p
+-- token_posn (Sym p _) = p
+-- token_posn (Var p _) = p
+-- token_posn (Int p _) = p
 
 main = do
   s <- getContents

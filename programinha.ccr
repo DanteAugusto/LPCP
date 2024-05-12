@@ -1,7 +1,15 @@
 typeDeclarations
+    type Pessoa
+        int idade = 34;
+        double altura = 1.90;
+    endType
+endTypeDeclarations
+
+globalVariables
     int a = 10;
     int b = 32;
-endTypeDeclarations
+    Pessoa p;
+endGlobalVariables
 
 subprograms
     fun soma(int a, int b) -> int 
