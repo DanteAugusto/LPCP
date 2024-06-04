@@ -1,5 +1,8 @@
 {
-  module Main (main, Token(..), AlexPosn(..), alexScanTokens, token_posn) where
+module Lexer where
+
+import System.IO
+import System.IO.Unsafe
 }
 
 %wrapper "posn"
@@ -14,39 +17,39 @@ tokens :-
   $white+                         ;
   "--".*.                         ;
   
-  typeDeclarations                { \p s -> TypeDeclarations p }
-  endTypeDeclarations             { \p s -> EndTypeDeclarations p }
-  type                            { \p s -> Type p }
-  endType                         { \p s -> EndType p }
+  typeDeclarations                { \p s -> TypeDeclarations (getLC p) }
+  endTypeDeclarations             { \p s -> EndTypeDeclarations (getLC p) }
+  type                            { \p s -> Type (getLC p) }
+  endType                         { \p s -> EndType (getLC p) }
 
-  globalVariables                 { \p s -> GlobalVariables p }
-  endGlobalVariables              { \p s -> EndGlobalVariables p }
+  globalVariables                 { \p s -> GlobalVariables (getLC p) }
+  endGlobalVariables              { \p s -> EndGlobalVariables (getLC p) }
 
-  subprograms                     { \p s -> Subprograms p }
-  endSubprograms                  { \p s -> EndSubprograms p }
+  subprograms                     { \p s -> Subprograms (getLC p) }
+  endSubprograms                  { \p s -> EndSubprograms (getLC p) }
 
-  program                         { \p s -> Program p }
-  end                             { \p s -> End p }
+  program                         { \p s -> Program (getLC p) }
+  end                             { \p s -> End (getLC p) }
 
-  fun                             { \p s -> Fun p }
-  endFun                          { \p s -> EndFun p }
-  return                          { \p s -> Return p }
+  fun                             { \p s -> Fun (getLC p) }
+  endFun                          { \p s -> EndFun (getLC p) }
+  return                          { \p s -> Return (getLC p) }
 
-  ";"                             { \p s -> Semicolon p }
-  "->"                            { \p s -> Arrow p }
-  "+"                             { \p s -> Plus p }
-  "="                             { \p s -> Assign p }
-  "("                             { \p s -> OpenParent p }
-  ")"                             { \p s -> CloseParent p }
-  ","                             { \p s -> Comma p }
+  ";"                             { \p s -> Semicolon (getLC p) }
+  "->"                            { \p s -> Arrow (getLC p) }
+  "+"                             { \p s -> Plus (getLC p) }
+  "="                             { \p s -> Assign (getLC p) }
+  "("                             { \p s -> OpenParent (getLC p) }
+  ")"                             { \p s -> CloseParent (getLC p) }
+  ","                             { \p s -> Comma (getLC p) }
 
-  int                             { \p s -> Int p }
-  double                          { \p s -> Double p }
+  int                             { \p s -> Int (getLC p) }
+  double                          { \p s -> Double (getLC p) }
   
-  $digit+	                            { \p s -> IntLit p (read s) }
-  $digit+\.$digit+	                  { \p s -> DoubleLit p (read s) }
-  $lowerAlpha [$alpha $digit \_]*	    { \p s -> Id p s }
-  $upperAlpha [$alpha $digit \_]*	    { \p s -> TypeId p s }
+  $digit+	                            { \p s -> IntLit (read s) (getLC p) }
+  $digit+\.$digit+	                  { \p s -> DoubleLit (read s) (getLC p) }
+  $lowerAlpha [$alpha $digit \_]*	    { \p s -> Id s (getLC p)}
+  $upperAlpha [$alpha $digit \_]*	    { \p s -> TypeId s (getLC p)}
 
 {
 -- Each right-hand side has type :: AlexPosn -> String -> Token
@@ -54,41 +57,46 @@ tokens :-
 
 -- The token type:
 data Token =
-  TypeDeclarations     AlexPosn        |
-  EndTypeDeclarations  AlexPosn        |
-  Type                 AlexPosn        |                 
-  EndType              AlexPosn        |
-  GlobalVariables      AlexPosn        |
-  EndGlobalVariables   AlexPosn        |
-  Subprograms          AlexPosn        |
-  EndSubprograms       AlexPosn        |
-  Program              AlexPosn        |
-  End                  AlexPosn        |
-  Fun                  AlexPosn        |
-  EndFun               AlexPosn        |
-  Return               AlexPosn        |
-  Semicolon            AlexPosn        |
-  Arrow                AlexPosn        |
-  Plus                 AlexPosn        |
-  Assign               AlexPosn        |
-  OpenParent           AlexPosn        |
-  CloseParent          AlexPosn        |
-  Comma                AlexPosn        |
-  Int                  AlexPosn        |
-  Double               AlexPosn        |
-  IntLit               AlexPosn Int    |
-  DoubleLit            AlexPosn Double |
-  Id                   AlexPosn String |
-  TypeId               AlexPosn String 
+  TypeDeclarations     (Int, Int)        |
+  EndTypeDeclarations  (Int, Int)        |
+  Type                 (Int, Int)        |                 
+  EndType              (Int, Int)        |
+  GlobalVariables      (Int, Int)        |
+  EndGlobalVariables   (Int, Int)        |
+  Subprograms          (Int, Int)        |
+  EndSubprograms       (Int, Int)        |
+  Program              (Int, Int)        |
+  End                  (Int, Int)        |
+  Fun                  (Int, Int)        |
+  EndFun               (Int, Int)        |
+  Return               (Int, Int)        |
+  Semicolon            (Int, Int)        |
+  Arrow                (Int, Int)        |
+  Plus                 (Int, Int)        |
+  Assign               (Int, Int)        |
+  OpenParent           (Int, Int)        |
+  CloseParent          (Int, Int)        |
+  Comma                (Int, Int)        |
+  Int                  (Int, Int)        |
+  Double               (Int, Int)        |
+  IntLit               Int (Int, Int)    |
+  DoubleLit            Double (Int, Int) |
+  Id                   String (Int, Int) |
+  TypeId               String (Int, Int)  
   deriving (Eq,Show)
 
-token_posn (Double p) = p
+-- token_posn (Double p) = p
 -- token_posn (In p) = p
 -- token_posn (Sym p _) = p
 -- token_posn (Var p _) = p
--- token_posn (Int p _) = p
+-- token_posn (IntLit p _) = p
+-- token_posn (Int p) = p
 
-main = do
-  s <- getContents
-  print (alexScanTokens s)
+getLC (AlexPn _ l c) = (l, c)  
+
+getTokens fn = unsafePerformIO (getTokensAux fn)
+
+getTokensAux fn = do {fh <- openFile fn ReadMode;
+                      s <- hGetContents fh;
+                      return (alexScanTokens s)}
 }
