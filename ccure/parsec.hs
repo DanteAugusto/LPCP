@@ -1,3 +1,9 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
+{-# HLINT ignore "Eta reduce" #-}
+{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Main (main) where
 
 import Lexer
@@ -39,6 +45,11 @@ intLiteralToken = tokenPrim show update_pos get_token where
 
 plusToken = tokenPrim show update_pos get_token where
   get_token (Plus p) = Just (Plus p)
+  get_token _       = Nothing 
+
+expoToken :: ParsecT [Token] st IO (Token)
+expoToken = tokenPrim show update_pos get_token where
+  get_token (Expo p) = Just (Expo p)
   get_token _       = Nothing 
 
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
@@ -130,9 +141,9 @@ update_pos pos _ []      = pos
 --   get_token Double = Just Double
 --   get_token _       = Nothing
 
--- intLitToken = tokenPrim show update_pos get_token where
---   get_token (IntLit x) = Just (IntLit x)
---   get_token _      = Nothing
+intLitToken = tokenPrim show update_pos get_token where
+  get_token (IntLit x p) = Just (IntLit x p)
+  get_token _      = Nothing
 
 -- doubleLitToken = tokenPrim show update_pos get_token where
 --   get_token (DoubleLit x) = Just (DoubleLit x)
@@ -153,18 +164,22 @@ program = do
             a <- programToken 
             b <- stmts
             c <- endToken
+            s <- getState
             eof
+            -- liftIO (print s)
             return ([a] ++ b ++ [c])
 
 varDecl :: ParsecT [Token] [(Token,Token)] IO([Token])
 varDecl = do
             a <- intToken
-            b <- assignToken
-            c <- expression
-            updateState(symtable_insert (a, c))
+            b <- idToken
+            c <- assignToken
+            d <- expression
+            e <- semiColonToken
+            updateState(symtable_insert (b, d))
             s <- getState
             liftIO (print s)
-            return (a:b:[c])
+            return (a:b:c:d:[e])
 
 stmts :: ParsecT [Token] [(Token,Token)] IO([Token])
 stmts = do
@@ -191,27 +206,27 @@ get_type :: Token -> [(Token, Token)] -> Token
 get_type _ [] = error "variable not found"
 get_type (Id id1 p1) ((Id id2 _, value):t) = if id1 == id2 then value
                                              else get_type (Id id1 p1) t
+-- get_type (Id id1 p1) _ = error "o misterio"
 
 expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 expression = try bin_expression <|> una_expression
 
 una_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 una_expression = do
-                   op <- plusToken
-                   a <- intToken 
+                   a <- intLitToken
                    return (a)
    
 --- funções considerando associatividade à esquerda                  
 bin_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 bin_expression = do
-                   n1 <- intToken
+                   n1 <- intLitToken
                    result <- eval_remaining n1
                    return (result)
 
 eval_remaining :: Token -> ParsecT [Token] [(Token,Token)] IO(Token)
 eval_remaining n1 = do
                       op <- plusToken
-                      n2 <- intToken
+                      n2 <- intLitToken
                       result <- eval_remaining (eval n1 op n2)
                       return (result) 
                     <|> return (n1)                              
@@ -235,9 +250,9 @@ symtable_insert symbol symtable = symtable ++ [symbol]
 
 symtable_update :: (Token,Token) -> [(Token,Token)] -> [(Token,Token)]
 symtable_update _ [] = fail "variable not found"
-symtable_update (id1, v1) ((id2, v2):t) = 
-                               if id1 == id2 then (id1, v1) : t
-                               else (id2, v2) : symtable_update (id1, v1) t
+symtable_update (Id id1 p1, v1) ((Id id2 p2, v2):t) = 
+                               if id1 == id2 then (Id id1 p2, v1) : t
+                               else (Id id2 p2, v2) : symtable_update (Id id1 p1, v1) t
 
 symtable_remove :: (Token,Token) -> [(Token,Token)] -> [(Token,Token)]
 symtable_remove _ [] = fail "variable not found"

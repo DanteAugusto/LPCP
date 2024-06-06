@@ -1,0 +1,4 @@
+program
+    int x = 0 + 2 + 2 + 2 + 92;
+    x = 2;
+end
