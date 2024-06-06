@@ -4,6 +4,7 @@
 {-# HLINT ignore "Redundant return" #-}
 {-# HLINT ignore "Redundant bracket" #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# HLINT ignore "Use <$>" #-}
 module Main (main) where
 
 import Lexer
@@ -37,11 +38,6 @@ assignToken = tokenPrim show update_pos get_token where
 intToken = tokenPrim show update_pos get_token where
   get_token (Int p) = Just (Int p)
   get_token _         = Nothing
-
-intLiteralToken :: ParsecT [Token] st IO (Token)
-intLiteralToken = tokenPrim show update_pos get_token where
-  get_token (IntLit x p) = Just (IntLit x p)
-  get_token _            = Nothing
 
 plusToken = tokenPrim show update_pos get_token where
   get_token (Plus p) = Just (Plus p)
@@ -208,8 +204,38 @@ get_type (Id id1 p1) ((Id id2 _, value):t) = if id1 == id2 then value
                                              else get_type (Id id1 p1) t
 -- get_type (Id id1 p1) _ = error "o misterio"
 
+-- expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+-- expression = try bin_expression <|> una_expression
+
 expression :: ParsecT [Token] [(Token,Token)] IO(Token)
-expression = try bin_expression <|> una_expression
+expression = sum_expression
+
+sum_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+sum_expression = try (do
+                    a <- term
+                    b <- plusToken 
+                    c <- sum_expression
+                    return (eval a b c)) 
+                  <|>
+                  (do  
+                    b <- term 
+                    return b ) 
+                    
+term :: ParsecT [Token] [(Token,Token)] IO(Token)
+term = factor
+
+factor :: ParsecT [Token] [(Token,Token)] IO(Token)
+factor = try (do
+            a <- expi
+            b <- expoToken
+            c <- factor
+            return (eval a b c)) <|> expi
+
+expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
+expi = do
+        a <- intLitToken
+        return a
+
 
 una_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 una_expression = do
@@ -217,11 +243,11 @@ una_expression = do
                    return (a)
    
 --- funções considerando associatividade à esquerda                  
-bin_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
-bin_expression = do
-                   n1 <- intLitToken
-                   result <- eval_remaining n1
-                   return (result)
+-- bin_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+-- bin_expression = do
+--                    n1 <- intLitToken
+--                    result <- eval_remaining n1
+--                    return (result)
 
 eval_remaining :: Token -> ParsecT [Token] [(Token,Token)] IO(Token)
 eval_remaining n1 = do
@@ -229,10 +255,19 @@ eval_remaining n1 = do
                       n2 <- intLitToken
                       result <- eval_remaining (eval n1 op n2)
                       return (result) 
-                    <|> return (n1)                              
+                    <|> return (n1)  
+                    
+eval_remaining_right :: Token -> ParsecT [Token] [(Token,Token)] IO(Token)
+eval_remaining_right n1 = do
+                      op <- plusToken
+                      n2 <- intLitToken
+                      result <- eval_remaining_right (n2)
+                      return (eval n1 op n2) 
+                    <|> return (n1)                               
 
 eval :: Token -> Token -> Token -> Token
 eval (IntLit x p) (Plus _ ) (IntLit y _) = IntLit (x + y) p
+eval (IntLit x p) (Expo _ ) (IntLit y _) = IntLit (x ^ y) p
 
 remainingStmts :: ParsecT [Token] [(Token,Token)] IO([Token])
 remainingStmts = (do a <- assign
