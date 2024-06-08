@@ -7,6 +7,7 @@
 {-# HLINT ignore "Use <$>" #-}
 module Main (main) where
 
+import ExpressionsUtil
 import Lexer
 import Text.Parsec
 import Control.Monad.IO.Class
@@ -14,6 +15,9 @@ import Control.Monad.IO.Class
 import System.IO.Unsafe
 
 -- parsers para os tokens
+
+type ParsecType = ParsecT [Token] [(Token,Token)] IO (Token)
+type ParsecTokenType = ParsecT [Token] [(Token,Token)] IO (Token)
 
 programToken = tokenPrim show update_pos get_token where
   get_token (Program p) = Just (Program p)
@@ -41,6 +45,11 @@ intToken = tokenPrim show update_pos get_token where
 
 plusToken = tokenPrim show update_pos get_token where
   get_token (Plus p) = Just (Plus p)
+  get_token _       = Nothing 
+
+multToken :: ParsecT [Token] st IO (Token)
+multToken = tokenPrim show update_pos get_token where
+  get_token (Mult p) = Just (Mult p)
   get_token _       = Nothing 
 
 expoToken :: ParsecT [Token] st IO (Token)
@@ -171,6 +180,8 @@ varDecl = do
             b <- idToken
             c <- assignToken
             d <- expression
+            liftIO (print "olha a expressao ai o")
+            liftIO (print d)
             e <- semiColonToken
             updateState(symtable_insert (b, d))
             s <- getState
@@ -211,31 +222,25 @@ expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 expression = sum_expression
 
 sum_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
-sum_expression = try (do
+sum_expression = (do 
                     a <- term
-                    b <- plusToken 
-                    c <- sum_expression
-                    return (eval a b c)) 
-                  <|>
-                  (do  
-                    b <- term 
-                    return b ) 
-                    
+                    result <- eval_remaining a plusToken term
+                    return result)
+                 
 term :: ParsecT [Token] [(Token,Token)] IO(Token)
 term = factor
 
 factor :: ParsecT [Token] [(Token,Token)] IO(Token)
-factor = try (do
+factor = (do
             a <- expi
-            b <- expoToken
-            c <- factor
-            return (eval a b c)) <|> expi
+            result <- eval_remaining_right a expoToken expi
+            return result
+          )
 
 expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
 expi = do
         a <- intLitToken
         return a
-
 
 una_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 una_expression = do
@@ -243,27 +248,21 @@ una_expression = do
                    return (a)
    
 --- funções considerando associatividade à esquerda                  
--- bin_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
--- bin_expression = do
---                    n1 <- intLitToken
---                    result <- eval_remaining n1
---                    return (result)
-
-eval_remaining :: Token -> ParsecT [Token] [(Token,Token)] IO(Token)
-eval_remaining n1 = do
-                      op <- plusToken
-                      n2 <- intLitToken
-                      result <- eval_remaining (eval n1 op n2)
-                      return (result) 
-                    <|> return (n1)  
+eval_remaining :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] [(Token,Token)] IO(Token)
+eval_remaining n1 operator remain = (do
+                                op <- operator
+                                n2 <- remain
+                                result <- eval_remaining (eval n1 op n2) operator remain
+                                return (result)) 
+                              <|> return (n1)
                     
-eval_remaining_right :: Token -> ParsecT [Token] [(Token,Token)] IO(Token)
-eval_remaining_right n1 = do
-                      op <- plusToken
-                      n2 <- intLitToken
-                      result <- eval_remaining_right (n2)
-                      return (eval n1 op n2) 
-                    <|> return (n1)                               
+eval_remaining_right :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] [(Token,Token)] IO(Token)
+eval_remaining_right n1 operator remain = (do
+                                op <- operator
+                                n2 <- remain
+                                result <- eval_remaining_right n2 operator remain
+                                return (eval n1 op result)) 
+                              <|> return (n1)                            
 
 eval :: Token -> Token -> Token -> Token
 eval (IntLit x p) (Plus _ ) (IntLit y _) = IntLit (x + y) p

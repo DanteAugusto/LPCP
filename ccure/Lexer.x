@@ -38,6 +38,7 @@ tokens :-
   ";"                             { \p s -> Semicolon (getLC p) }
   "->"                            { \p s -> Arrow (getLC p) }
   "+"                             { \p s -> Plus (getLC p) }
+  "*"                             { \p s -> Mult (getLC p) }
   "**"                            { \p s -> Expo (getLC p) }
   "="                             { \p s -> Assign (getLC p) }
   "("                             { \p s -> OpenParent (getLC p) }
@@ -74,6 +75,7 @@ data Token =
   Semicolon            (Int, Int)        |
   Arrow                (Int, Int)        |
   Plus                 (Int, Int)        |
+  Mult                 (Int, Int)        |
   Expo                 (Int, Int)        |
   Assign               (Int, Int)        |
   OpenParent           (Int, Int)        |

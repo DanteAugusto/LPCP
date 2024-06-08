@@ -1,4 +1,4 @@
 program
-    int x = 2 ** 3 + 4 + 6;
+    int x = 2 + 2 ** 3 ** 2 + 2;
     x = 2;
 end
