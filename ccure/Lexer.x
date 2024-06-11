@@ -38,8 +38,19 @@ tokens :-
   ";"                             { \p s -> Semicolon (getLC p) }
   "->"                            { \p s -> Arrow (getLC p) }
   "+"                             { \p s -> Plus (getLC p) }
+  "-"                             { \p s -> Minus (getLC p) }
   "*"                             { \p s -> Mult (getLC p) }
+  "/"                             { \p s -> Divi (getLC p) }
+  "%"                             { \p s -> Mod (getLC p) }
   "**"                            { \p s -> Expo (getLC p) }
+  "<"                             { \p s -> Lesser (getLC p) }
+  ">"                             { \p s -> Greater (getLC p) }
+  ">="                            { \p s -> LessEq (getLC p) }
+  "<="                            { \p s -> GreatEq (getLC p) }
+  "&&"                            { \p s -> And (getLC p) }
+  "||"                            { \p s -> Or (getLC p) }
+  "!="                            { \p s -> Diff (getLC p) }
+  "=="                            { \p s -> Eq (getLC p) }
   "="                             { \p s -> Assign (getLC p) }
   "("                             { \p s -> OpenParent (getLC p) }
   ")"                             { \p s -> CloseParent (getLC p) }
@@ -47,7 +58,8 @@ tokens :-
 
   int                             { \p s -> Int (getLC p) }
   double                          { \p s -> Double (getLC p) }
-  
+  -- float                           { \p s -> Float (getLC p) }
+
   $digit+	                            { \p s -> IntLit (read s) (getLC p) }
   $digit+\.$digit+	                  { \p s -> DoubleLit (read s) (getLC p) }
   $lowerAlpha [$alpha $digit \_]*	    { \p s -> Id s (getLC p)}
@@ -76,6 +88,17 @@ data Token =
   Arrow                (Int, Int)        |
   Plus                 (Int, Int)        |
   Mult                 (Int, Int)        |
+  Divi                 (Int, Int)        |
+  Mod                  (Int, Int)        |
+  Lesser               (Int, Int)        |
+  Greater              (Int, Int)        |
+  LessEq               (Int, Int)        |
+  GreatEq              (Int, Int)        |
+  And                  (Int, Int)        |
+  Or                   (Int, Int)        |
+  Eq                   (Int, Int)        |
+  Diff                 (Int, Int)        |
+  Minus                (Int, Int)        |
   Expo                 (Int, Int)        |
   Assign               (Int, Int)        |
   OpenParent           (Int, Int)        |
@@ -89,6 +112,15 @@ data Token =
   TypeId               String (Int, Int)  
   deriving (Eq,Show)
 
+-- "<"                             { \p s -> Lesser (getLC p) }
+--   ">"                             { \p s -> Greater (getLC p) }
+--   ">="                            { \p s -> LessEq (getLC p) }
+--   "<="                            { \p s -> GreatEq (getLC p) }
+--   "&&"                            { \p s -> And (getLC p) }
+--   "||"                            { \p s -> Or (getLC p) }
+--   "!="                            { \p s -> Diff (getLC p) }
+--   "=="                            { \p s -> Eq (getLC p) }
+  
 -- token_posn (Double p) = p
 -- token_posn (In p) = p
 -- token_posn (Sym p _) = p

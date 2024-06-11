@@ -43,6 +43,20 @@ intToken = tokenPrim show update_pos get_token where
   get_token (Int p) = Just (Int p)
   get_token _         = Nothing
 
+doubleToken = tokenPrim show update_pos get_token where
+  get_token (Double p) = Just (Double p)
+  get_token _         = Nothing
+
+minusToken :: ParsecT [Token] st IO (Token)
+minusToken = tokenPrim show update_pos get_token where
+  get_token (Minus p) = Just (Minus p)
+  get_token _       = Nothing
+
+diviToken :: ParsecT [Token] st IO (Token)
+diviToken = tokenPrim show update_pos get_token where
+  get_token (Divi p) = Just (Divi p)
+  get_token _       = Nothing
+
 plusToken = tokenPrim show update_pos get_token where
   get_token (Plus p) = Just (Plus p)
   get_token _       = Nothing 
@@ -50,6 +64,11 @@ plusToken = tokenPrim show update_pos get_token where
 multToken :: ParsecT [Token] st IO (Token)
 multToken = tokenPrim show update_pos get_token where
   get_token (Mult p) = Just (Mult p)
+  get_token _       = Nothing 
+
+modToken :: ParsecT [Token] st IO (Token)
+modToken = tokenPrim show update_pos get_token where
+  get_token (Mod p) = Just (Mod p)
   get_token _       = Nothing 
 
 expoToken :: ParsecT [Token] st IO (Token)
@@ -150,6 +169,10 @@ intLitToken = tokenPrim show update_pos get_token where
   get_token (IntLit x p) = Just (IntLit x p)
   get_token _      = Nothing
 
+doubleLitToken = tokenPrim show update_pos get_token where
+  get_token (DoubleLit x p) = Just (DoubleLit x p)
+  get_token _      = Nothing
+
 -- doubleLitToken = tokenPrim show update_pos get_token where
 --   get_token (DoubleLit x) = Just (DoubleLit x)
 --   get_token _      = Nothing
@@ -174,14 +197,17 @@ program = do
             -- liftIO (print s)
             return ([a] ++ b ++ [c])
 
+typeToken :: ParsecT [Token] [(Token,Token)] IO(Token)
+typeToken = try intToken <|> doubleToken
+
 varDecl :: ParsecT [Token] [(Token,Token)] IO([Token])
 varDecl = do
-            a <- intToken
+            a <- typeToken
             b <- idToken
             c <- assignToken
             d <- expression
-            liftIO (print "olha a expressao ai o")
-            liftIO (print d)
+            -- liftIO (print "olha a expressao ai o")
+            -- liftIO (print d)
             e <- semiColonToken
             updateState(symtable_insert (b, d))
             s <- getState
@@ -201,6 +227,7 @@ assign = do
           c <- expression
           d <- semiColonToken
           s <- getState
+          liftIO(print c)
           if (not (compatible (get_type a s) c)) then fail "type mismatch"
           else 
             do 
@@ -221,14 +248,23 @@ get_type (Id id1 p1) ((Id id2 _, value):t) = if id1 == id2 then value
 expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 expression = sum_expression
 
+sum_minus :: ParsecT [Token] [(Token,Token)] IO(Token)
+sum_minus = try plusToken <|> minusToken
+
 sum_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 sum_expression = (do 
                     a <- term
-                    result <- eval_remaining a plusToken term
+                    result <- eval_remaining a sum_minus term
                     return result)
-                 
+
+mult_div_mod :: ParsecT [Token] [(Token,Token)] IO(Token)
+mult_div_mod = try multToken <|> diviToken <|> modToken
+                
 term :: ParsecT [Token] [(Token,Token)] IO(Token)
-term = factor
+term = (do
+          a <- factor
+          result <- eval_remaining a mult_div_mod factor
+          return result)
 
 factor :: ParsecT [Token] [(Token,Token)] IO(Token)
 factor = (do
@@ -238,9 +274,7 @@ factor = (do
           )
 
 expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
-expi = do
-        a <- intLitToken
-        return a
+expi = try intLitToken <|> doubleLitToken
 
 una_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 una_expression = do
@@ -266,7 +300,16 @@ eval_remaining_right n1 operator remain = (do
 
 eval :: Token -> Token -> Token -> Token
 eval (IntLit x p) (Plus _ ) (IntLit y _) = IntLit (x + y) p
+eval (IntLit x p) (Minus _ ) (IntLit y _) = IntLit (x - y) p
+eval (IntLit x p) (Mult _ ) (IntLit y _) = IntLit (x * y) p
+eval (IntLit x p) (Divi _ ) (IntLit y _) = IntLit (x `div` y) p
+eval (IntLit x p) (Mod _ ) (IntLit y _) = IntLit (x `mod` y) p
 eval (IntLit x p) (Expo _ ) (IntLit y _) = IntLit (x ^ y) p
+eval (DoubleLit x p) (Plus _ ) (DoubleLit y _) = DoubleLit (x + y) p
+eval (DoubleLit x p) (Minus _ ) (DoubleLit y _) = DoubleLit (x - y) p
+eval (DoubleLit x p) (Mult _ ) (DoubleLit y _) = DoubleLit (x * y) p
+eval (DoubleLit x p) (Divi _ ) (DoubleLit y _) = DoubleLit (x / y) p
+eval (DoubleLit x p) (Expo _ ) (DoubleLit y _) = DoubleLit (x ** y) p
 
 remainingStmts :: ParsecT [Token] [(Token,Token)] IO([Token])
 remainingStmts = (do a <- assign
@@ -274,6 +317,7 @@ remainingStmts = (do a <- assign
 
 compatible :: Token -> Token -> Bool
 compatible (IntLit _ _) (IntLit _ _) = True
+compatible (DoubleLit _ _) (DoubleLit _ _) = True
 compatible _ _ = False
 
 -- funções para a tabela de símbolos
