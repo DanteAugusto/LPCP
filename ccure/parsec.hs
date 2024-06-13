@@ -27,6 +27,14 @@ endToken = tokenPrim show update_pos get_token where
   get_token (End p) = Just (End p)
   get_token _           = Nothing
 
+openParentToken = tokenPrim show update_pos get_token where
+  get_token (OpenParent p) = Just (OpenParent p)
+  get_token _           = Nothing
+
+closeParentToken = tokenPrim show update_pos get_token where
+  get_token (CloseParent p) = Just (CloseParent p)
+  get_token _           = Nothing
+
 idToken = tokenPrim show update_pos get_token where
   get_token (Id x p) = Just (Id x p)
   get_token _        = Nothing
@@ -273,8 +281,15 @@ factor = (do
             return result
           )
 
+enclosed_exp :: ParsecT [Token] [(Token,Token)] IO(Token)      
+enclosed_exp = do
+                a <- openParentToken
+                b <- expression
+                c <- closeParentToken
+                return b 
+
 expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
-expi = try intLitToken <|> doubleLitToken
+expi = try intLitToken <|> doubleLitToken <|> enclosed_exp
 
 una_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 una_expression = do
