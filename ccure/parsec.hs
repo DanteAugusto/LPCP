@@ -127,6 +127,11 @@ diffToken = tokenPrim show update_pos get_token where
   get_token (Diff p) = Just (Diff p)
   get_token _       = Nothing 
 
+negToken :: ParsecT [Token] st IO (Token)
+negToken = tokenPrim show update_pos get_token where
+  get_token (Neg p) = Just (Neg p)
+  get_token _       = Nothing 
+
 
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
 update_pos pos _ (tok:_) = pos -- necessita melhoria
@@ -229,9 +234,19 @@ and_expression = (do
 
 or_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 or_expression = (do 
-                    a <- rel_expression
-                    result <- eval_remaining a orToken rel_expression
+                    a <- neg_expression
+                    result <- eval_remaining a orToken neg_expression
                     return result)
+
+neg_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+neg_expression = (do 
+                    op <- negToken
+                    rel <- rel_expression
+                    result <- eval_unary op rel
+                    return result) <|>
+                  (do 
+                    a <- rel_expression
+                    return a)
 
 rel_operator :: ParsecT [Token] [(Token,Token)] IO(Token)
 rel_operator = try eqToken <|> diffToken <|> leqToken <|> geqToken <|> lessToken <|> greatToken
@@ -303,7 +318,14 @@ eval_remaining_right n1 operator remain = (do
                                 else
                                   do
                                     return (eval n1 op result)) 
-                              <|> return (n1)                            
+                              <|> return (n1)        
+
+eval_unary :: Token -> Token -> Token
+eval_unary (Neg p) (BoolLit x _) = BoolLit (not x) p
+eval_unary (Plus p) (IntLit x _) = IntLit (x) p
+eval_unary (Plus p) (DoubleLit x _) = DoubleLit (x) p
+eval_unary (Minus p) (IntLit x _) = IntLit (-x) p
+eval_unary (Minus p) (DoubleLit x _) = DoubleLit (-x) p
 
 eval :: Token -> Token -> Token -> Token
 eval (IntLit x p) (Plus _ ) (IntLit y _) = IntLit (x + y) p

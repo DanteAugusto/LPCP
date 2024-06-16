@@ -51,6 +51,7 @@ tokens :-
   "||"                            { \p s -> Or (getLC p) }
   "!="                            { \p s -> Diff (getLC p) }
   "=="                            { \p s -> Eq (getLC p) }
+  "!"                             { \p s -> Neg (getLC p) }
   "="                             { \p s -> Assign (getLC p) }
   "("                             { \p s -> OpenParent (getLC p) }
   ")"                             { \p s -> CloseParent (getLC p) }
@@ -100,6 +101,7 @@ data Token =
   Or                   (Int, Int)        |
   Eq                   (Int, Int)        |
   Diff                 (Int, Int)        |
+  Neg                  (Int, Int)        |
   Minus                (Int, Int)        |
   Expo                 (Int, Int)        |
   Assign               (Int, Int)        |
