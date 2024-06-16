@@ -67,6 +67,11 @@ castToken = tokenPrim show update_pos get_token where
   get_token (Cast p) = Just (Cast p)
   get_token _         = Nothing
 
+putsToken :: ParsecT [Token] st IO (Token)
+putsToken = tokenPrim show update_pos get_token where
+  get_token (Puts p) = Just (Puts p)
+  get_token _         = Nothing
+
 minusToken :: ParsecT [Token] st IO (Token)
 minusToken = tokenPrim show update_pos get_token where
   get_token (Minus p) = Just (Minus p)
@@ -196,13 +201,29 @@ varDecl = do
 
 stmts :: ParsecT [Token] [(Token,Token)] IO([Token])
 stmts = do
-          first <- varDecl
+          first <- stmt
           next <- remainingStmts
           return (first ++ next)
 
+stmt :: ParsecT [Token] [(Token,Token)] IO([Token])
+stmt = try varDecl <|> assign <|> printPuts
+
+printPuts :: ParsecT [Token] [(Token,Token)] IO([Token])
+printPuts = do 
+              a <- putsToken
+              b <- openParentToken
+              c <- expression
+              d <- closeParentToken
+              e <- semiColonToken
+              liftIO (print c)
+              return (a:b:c:d:[e])
+
+
 remainingStmts :: ParsecT [Token] [(Token,Token)] IO([Token])
-remainingStmts = (do a <- assign
-                     return a) <|> (return [])
+remainingStmts = (do
+                  a <- stmt
+                  b <- remainingStmts 
+                  return (a ++ b)) <|> return ([])
 
 assign :: ParsecT [Token] [(Token,Token)] IO([Token])
 assign = do
@@ -334,8 +355,17 @@ cast (IntLit v p) (Double _)    = DoubleLit (fromIntegral v) p
 cast (DoubleLit v p) (Double _) = DoubleLit v p
 
 expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
-expi = try intLitToken <|> doubleLitToken <|> boolLitToken <|> castParser <|> enclosed_exp
-   
+expi = try intLitToken <|> doubleLitToken <|> boolLitToken <|> castParser <|> enclosed_exp <|> variableParser
+
+variableParser :: ParsecT [Token] [(Token,Token)] IO(Token)
+variableParser = do
+                  id <- idToken
+                  s <- getState
+                  return (getMayb (symtable_get id s))
+                  
+getMayb :: Maybe a -> a
+getMayb (Just a) = a
+
 --- funções considerando associatividade à esquerda                  
 eval_remaining :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] [(Token,Token)] IO(Token)
 eval_remaining n1 operator remain = (do
@@ -461,6 +491,11 @@ symtable_remove (id1, v1) ((id2, v2):t) =
                                if id1 == id2 then t
                                else (id2, v2) : symtable_remove (id1, v1) t                               
 
+symtable_get :: Token -> [(Token,Token)] -> Maybe Token
+symtable_get _ [] = fail "variable not found"
+symtable_get (Id id1 p1) ((Id id2 p2, v2):t) = 
+                            if (id1 == id2) then Just v2
+                            else symtable_get (Id id1 p1) t
 
 -- invocação do parser para o símbolo de partida 
 

@@ -63,6 +63,7 @@ tokens :-
   bool                            { \p s -> Bool (getLC p) }
 
   cast                            { \p s -> Cast (getLC p) }
+  puts                            { \p s -> Puts (getLC p) }
 
   $digit+	                            { \p s -> IntLit (read s) (getLC p) }
   $digit+\.$digit+	                  { \p s -> DoubleLit (read s) (getLC p) }
@@ -114,12 +115,18 @@ data Token =
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
   Cast                 (Int, Int)        |
+  Puts                 (Int, Int)        |
   IntLit               Int (Int, Int)    |
   DoubleLit            Double (Int, Int) |
   BoolLit              Bool   (Int, Int) |
   Id                   String (Int, Int) |
   TypeId               String (Int, Int)  
-  deriving (Eq,Show)
+  deriving (Eq, Show)
+
+-- instance Show Token where
+--   show (DoubleLit v p) = show v
+--   show (IntLit v p) = show v
+--   show _ = ""
 
 -- "<"                             { \p s -> Lesser (getLC p) }
 --   ">"                             { \p s -> Greater (getLC p) }
