@@ -62,6 +62,8 @@ tokens :-
   -- float                           { \p s -> Float (getLC p) }
   bool                            { \p s -> Bool (getLC p) }
 
+  cast                            { \p s -> Cast (getLC p) }
+
   $digit+	                            { \p s -> IntLit (read s) (getLC p) }
   $digit+\.$digit+	                  { \p s -> DoubleLit (read s) (getLC p) }
   ("True"|"False")                    { \p s -> BoolLit (read s) (getLC p) }
@@ -111,6 +113,7 @@ data Token =
   Int                  (Int, Int)        |
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
+  Cast                 (Int, Int)        |
   IntLit               Int (Int, Int)    |
   DoubleLit            Double (Int, Int) |
   BoolLit              Bool   (Int, Int) |

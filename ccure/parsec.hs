@@ -42,6 +42,10 @@ semiColonToken = tokenPrim show update_pos get_token where
   get_token (Semicolon p) = Just (Semicolon p)
   get_token _             = Nothing
 
+commaToken = tokenPrim show update_pos get_token where
+  get_token (Comma p) = Just (Comma p)
+  get_token _             = Nothing
+
 assignToken = tokenPrim show update_pos get_token where
   get_token (Assign p) = Just (Assign p)
   get_token _          = Nothing
@@ -56,6 +60,11 @@ doubleToken = tokenPrim show update_pos get_token where
 
 boolToken = tokenPrim show update_pos get_token where
   get_token (Bool p) = Just (Bool p)
+  get_token _         = Nothing
+
+castToken :: ParsecT [Token] st IO (Token)
+castToken = tokenPrim show update_pos get_token where
+  get_token (Cast p) = Just (Cast p)
   get_token _         = Nothing
 
 minusToken :: ParsecT [Token] st IO (Token)
@@ -242,8 +251,7 @@ neg_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 neg_expression = (do 
                     op <- negToken
                     rel <- rel_expression
-                    result <- eval_unary op rel
-                    return result) <|>
+                    return (eval_unary op rel)) <|>
                   (do 
                     a <- rel_expression
                     return a)
@@ -262,9 +270,18 @@ sum_minus = try plusToken <|> minusToken
 
 sum_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 sum_expression = (do 
-                    a <- term
-                    result <- eval_remaining a sum_minus term
+                    a <- unary_minus_expression
+                    result <- eval_remaining a sum_minus unary_minus_expression
                     return result)
+
+unary_minus_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+unary_minus_expression = (do 
+                            op <- minusToken
+                            t <- term
+                            return (eval_unary op t)) <|>
+                         (do 
+                            a <- term
+                            return a)                  
 
 mult_div_mod :: ParsecT [Token] [(Token,Token)] IO(Token)
 mult_div_mod = try multToken <|> diviToken <|> modToken
@@ -289,13 +306,35 @@ enclosed_exp = do
                 c <- closeParentToken
                 return b 
 
-expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
-expi = try intLitToken <|> doubleLitToken <|> boolLitToken <|> enclosed_exp
+someTypeToken :: ParsecT [Token] [(Token,Token)] IO(Token) 
+someTypeToken = try intToken <|> doubleToken
 
-una_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
-una_expression = do
-                   a <- intLitToken
-                   return (a)
+castParser :: ParsecT [Token] [(Token,Token)] IO(Token)   
+castParser = do 
+              ct <- castToken
+              openP <- openParentToken
+              exp <- expression
+              c <- commaToken
+              t <- someTypeToken
+              closeP <- closeParentToken  
+              if (not (canCast exp t)) then fail "cast error"
+              else
+                do
+                  return (cast exp t)
+
+canCast :: Token -> Token -> Bool
+canCast (IntLit _ _) (Int _)       = True
+canCast (IntLit _ _) (Double _)    = True
+canCast (DoubleLit _ _) (Double _) = True
+canCast _ _                        = False
+
+cast :: Token -> Token -> Token
+cast (IntLit v p) (Int _)       = IntLit v p
+cast (IntLit v p) (Double _)    = DoubleLit (fromIntegral v) p
+cast (DoubleLit v p) (Double _) = DoubleLit v p
+
+expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
+expi = try intLitToken <|> doubleLitToken <|> boolLitToken <|> castParser <|> enclosed_exp
    
 --- funções considerando associatividade à esquerda                  
 eval_remaining :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] [(Token,Token)] IO(Token)
