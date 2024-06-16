@@ -43,10 +43,10 @@ tokens :-
   "/"                             { \p s -> Divi (getLC p) }
   "%"                             { \p s -> Mod (getLC p) }
   "**"                            { \p s -> Expo (getLC p) }
+  ">="                            { \p s -> GreatEq (getLC p) }
+  "<="                            { \p s -> LessEq (getLC p) }
   "<"                             { \p s -> Lesser (getLC p) }
   ">"                             { \p s -> Greater (getLC p) }
-  ">="                            { \p s -> LessEq (getLC p) }
-  "<="                            { \p s -> GreatEq (getLC p) }
   "&&"                            { \p s -> And (getLC p) }
   "||"                            { \p s -> Or (getLC p) }
   "!="                            { \p s -> Diff (getLC p) }
@@ -59,9 +59,11 @@ tokens :-
   int                             { \p s -> Int (getLC p) }
   double                          { \p s -> Double (getLC p) }
   -- float                           { \p s -> Float (getLC p) }
+  bool                            { \p s -> Bool (getLC p) }
 
   $digit+	                            { \p s -> IntLit (read s) (getLC p) }
   $digit+\.$digit+	                  { \p s -> DoubleLit (read s) (getLC p) }
+  ("True"|"False")                    { \p s -> BoolLit (read s) (getLC p) }
   $lowerAlpha [$alpha $digit \_]*	    { \p s -> Id s (getLC p)}
   $upperAlpha [$alpha $digit \_]*	    { \p s -> TypeId s (getLC p)}
 
@@ -106,8 +108,10 @@ data Token =
   Comma                (Int, Int)        |
   Int                  (Int, Int)        |
   Double               (Int, Int)        |
+  Bool                 (Int, Int)        |
   IntLit               Int (Int, Int)    |
   DoubleLit            Double (Int, Int) |
+  BoolLit              Bool   (Int, Int) |
   Id                   String (Int, Int) |
   TypeId               String (Int, Int)  
   deriving (Eq,Show)

@@ -7,7 +7,6 @@
 {-# HLINT ignore "Use <$>" #-}
 module Main (main) where
 
-import ExpressionsUtil
 import Lexer
 import Text.Parsec
 import Control.Monad.IO.Class
@@ -55,6 +54,10 @@ doubleToken = tokenPrim show update_pos get_token where
   get_token (Double p) = Just (Double p)
   get_token _         = Nothing
 
+boolToken = tokenPrim show update_pos get_token where
+  get_token (Bool p) = Just (Bool p)
+  get_token _         = Nothing
+
 minusToken :: ParsecT [Token] st IO (Token)
 minusToken = tokenPrim show update_pos get_token where
   get_token (Minus p) = Just (Minus p)
@@ -84,94 +87,51 @@ expoToken = tokenPrim show update_pos get_token where
   get_token (Expo p) = Just (Expo p)
   get_token _       = Nothing 
 
+andToken :: ParsecT [Token] st IO (Token)
+andToken = tokenPrim show update_pos get_token where
+  get_token (And p) = Just (And p)
+  get_token _       = Nothing
+
+orToken :: ParsecT [Token] st IO (Token)
+orToken = tokenPrim show update_pos get_token where
+  get_token (Or p) = Just (Or p)
+  get_token _       = Nothing 
+
+lessToken :: ParsecT [Token] st IO (Token)
+lessToken = tokenPrim show update_pos get_token where
+  get_token (Lesser p) = Just (Lesser p)
+  get_token _       = Nothing 
+
+greatToken :: ParsecT [Token] st IO (Token)
+greatToken = tokenPrim show update_pos get_token where
+  get_token (Greater p) = Just (Greater p)
+  get_token _       = Nothing 
+
+leqToken :: ParsecT [Token] st IO (Token)
+leqToken = tokenPrim show update_pos get_token where
+  get_token (LessEq p) = Just (LessEq p)
+  get_token _       = Nothing 
+
+geqToken :: ParsecT [Token] st IO (Token)
+geqToken = tokenPrim show update_pos get_token where
+  get_token (GreatEq p) = Just (GreatEq p)
+  get_token _       = Nothing 
+
+eqToken :: ParsecT [Token] st IO (Token)
+eqToken = tokenPrim show update_pos get_token where
+  get_token (Eq p) = Just (Eq p)
+  get_token _       = Nothing 
+
+diffToken :: ParsecT [Token] st IO (Token)
+diffToken = tokenPrim show update_pos get_token where
+  get_token (Diff p) = Just (Diff p)
+  get_token _       = Nothing 
+
+
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
 update_pos pos _ (tok:_) = pos -- necessita melhoria
 update_pos pos _ []      = pos  
 
-
--- typeDeclarationsToken = tokenPrim show update_pos get_token where
---   get_token TypeDeclarations = Just TypeDeclarations
---   get_token _       = Nothing
-
--- endTypeDeclarationsToken = tokenPrim show update_pos get_token where
---   get_token EndTypeDeclarations = Just EndTypeDeclarations
---   get_token _       = Nothing
-
--- typeToken = tokenPrim show update_pos get_token where
---   get_token Type = Just Type
---   get_token _       = Nothing
-
--- endTypeToken = tokenPrim show update_pos get_token where
---   get_token EndType = Just EndType
---   get_token _       = Nothing
-
--- globalVariablesToken = tokenPrim show update_pos get_token where
---   get_token GlobalVariables = Just GlobalVariables
---   get_token _       = Nothing
-  
--- endGlobalVariablesToken = tokenPrim show update_pos get_token where
---   get_token EndGlobalVariables = Just EndGlobalVariables
---   get_token _       = Nothing
-
--- subprogramsToken = tokenPrim show update_pos get_token where
---   get_token Subprograms = Just Subprograms
---   get_token _       = Nothing
-
--- endSubprogramsToken = tokenPrim show update_pos get_token where
---   get_token EndSubprograms = Just EndSubprograms
---   get_token _       = Nothing
-
--- programToken = tokenPrim show update_pos get_token where
---   get_token Program = Just Program
---   get_token _       = Nothing
-
--- endToken = tokenPrim show update_pos get_token where
---   get_token End = Just End
---   get_token _       = Nothing
-
--- funToken = tokenPrim show update_pos get_token where
---   get_token Fun = Just Fun
---   get_token _       = Nothing
-
--- endFunToken = tokenPrim show update_pos get_token where
---   get_token EndFun = Just EndFun
---   get_token _       = Nothing
-
--- returnToken = tokenPrim show update_pos get_token where
---   get_token Return = Just Return
---   get_token _       = Nothing
-
--- semicolonToken = tokenPrim show update_pos get_token where
---   get_token Semicolon = Just Semicolon
---   get_token _       = Nothing
-
--- arrowToken = tokenPrim show update_pos get_token where
---   get_token Arrow = Just Arrow
---   get_token _       = Nothing
-
--- plusToken = tokenPrim show update_pos get_token where
---   get_token Plus = Just Plus
---   get_token _       = Nothing
-
--- openParentToken = tokenPrim show update_pos get_token where
---   get_token OpenParent = Just OpenParent
---   get_token _       = Nothing
-
--- closeParentToken = tokenPrim show update_pos get_token where
---   get_token CloseParent = Just CloseParent
---   get_token _       = Nothing
-
--- commaToken = tokenPrim show update_pos get_token where
---   get_token Comma = Just Comma
---   get_token _       = Nothing
-
--- intToken = tokenPrim show update_pos get_token where
---   get_token Int = Just Int
---   get_token _       = Nothing
-
--- doubleToken = tokenPrim show update_pos get_token where
---   get_token Double = Just Double
---   get_token _       = Nothing
 
 intLitToken = tokenPrim show update_pos get_token where
   get_token (IntLit x p) = Just (IntLit x p)
@@ -181,17 +141,10 @@ doubleLitToken = tokenPrim show update_pos get_token where
   get_token (DoubleLit x p) = Just (DoubleLit x p)
   get_token _      = Nothing
 
--- doubleLitToken = tokenPrim show update_pos get_token where
---   get_token (DoubleLit x) = Just (DoubleLit x)
---   get_token _      = Nothing
-
--- idToken = tokenPrim show update_pos get_token where
---   get_token (Id x) = Just (Id x)
---   get_token _      = Nothing
-
--- typeidToken = tokenPrim show update_pos get_token where
---   get_token (TypeId x) = Just (TypeId x)
---   get_token _      = Nothing
+boolLitToken :: ParsecT [Token] st IO (Token)
+boolLitToken = tokenPrim show update_pos get_token where
+  get_token (BoolLit x p) = Just (BoolLit x p)
+  get_token _      = Nothing
 
 -- parsers para os não-terminais
 
@@ -206,7 +159,7 @@ program = do
             return ([a] ++ b ++ [c])
 
 typeToken :: ParsecT [Token] [(Token,Token)] IO(Token)
-typeToken = try intToken <|> doubleToken
+typeToken = try intToken <|> doubleToken <|> boolToken
 
 varDecl :: ParsecT [Token] [(Token,Token)] IO([Token])
 varDecl = do
@@ -217,16 +170,25 @@ varDecl = do
             -- liftIO (print "olha a expressao ai o")
             -- liftIO (print d)
             e <- semiColonToken
-            updateState(symtable_insert (b, d))
             s <- getState
-            liftIO (print s)
-            return (a:b:c:d:[e])
+            liftIO(print c)
+            if (not (compatible_varDecl a d)) then fail "type error on declaration"
+            else 
+              do
+                updateState(symtable_insert (b, d))
+                s <- getState
+                liftIO (print s)
+                return (a:b:c:d:[e])
 
 stmts :: ParsecT [Token] [(Token,Token)] IO([Token])
 stmts = do
           first <- varDecl
           next <- remainingStmts
           return (first ++ next)
+
+remainingStmts :: ParsecT [Token] [(Token,Token)] IO([Token])
+remainingStmts = (do a <- assign
+                     return a) <|> (return [])
 
 assign :: ParsecT [Token] [(Token,Token)] IO([Token])
 assign = do
@@ -236,7 +198,7 @@ assign = do
           d <- semiColonToken
           s <- getState
           liftIO(print c)
-          if (not (compatible (get_type a s) c)) then fail "type mismatch"
+          if (not (compatible (get_type a s) c)) then fail "type error on assign"
           else 
             do 
               updateState(symtable_update (a, c))
@@ -254,7 +216,31 @@ get_type (Id id1 p1) ((Id id2 _, value):t) = if id1 == id2 then value
 -- expression = try bin_expression <|> una_expression
 
 expression :: ParsecT [Token] [(Token,Token)] IO(Token)
-expression = sum_expression
+expression = bool_expression
+
+bool_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+bool_expression = and_expression
+
+and_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+and_expression = (do 
+                    a <- or_expression
+                    result <- eval_remaining a andToken or_expression
+                    return result)
+
+or_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+or_expression = (do 
+                    a <- rel_expression
+                    result <- eval_remaining a orToken rel_expression
+                    return result)
+
+rel_operator :: ParsecT [Token] [(Token,Token)] IO(Token)
+rel_operator = try eqToken <|> diffToken <|> leqToken <|> geqToken <|> lessToken <|> greatToken
+
+rel_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+rel_expression = (do 
+                    a <- sum_expression
+                    result <- eval_remaining a rel_operator sum_expression
+                    return result)
 
 sum_minus :: ParsecT [Token] [(Token,Token)] IO(Token)
 sum_minus = try plusToken <|> minusToken
@@ -289,7 +275,7 @@ enclosed_exp = do
                 return b 
 
 expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
-expi = try intLitToken <|> doubleLitToken <|> enclosed_exp
+expi = try intLitToken <|> doubleLitToken <|> boolLitToken <|> enclosed_exp
 
 una_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 una_expression = do
@@ -301,8 +287,11 @@ eval_remaining :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] [(To
 eval_remaining n1 operator remain = (do
                                 op <- operator
                                 n2 <- remain
-                                result <- eval_remaining (eval n1 op n2) operator remain
-                                return (result)) 
+                                if (not (compatible_op n1 op n2)) then fail "type error on evaluating expression"
+                                else
+                                  do
+                                    result <- eval_remaining (eval n1 op n2) operator remain
+                                    return (result)) 
                               <|> return (n1)
                     
 eval_remaining_right :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] [(Token,Token)] IO(Token)
@@ -310,7 +299,10 @@ eval_remaining_right n1 operator remain = (do
                                 op <- operator
                                 n2 <- remain
                                 result <- eval_remaining_right n2 operator remain
-                                return (eval n1 op result)) 
+                                if (not (compatible_op n1 op n2)) then fail "type error on evaluating expression"
+                                else
+                                  do
+                                    return (eval n1 op result)) 
                               <|> return (n1)                            
 
 eval :: Token -> Token -> Token -> Token
@@ -320,20 +312,75 @@ eval (IntLit x p) (Mult _ ) (IntLit y _) = IntLit (x * y) p
 eval (IntLit x p) (Divi _ ) (IntLit y _) = IntLit (x `div` y) p
 eval (IntLit x p) (Mod _ ) (IntLit y _) = IntLit (x `mod` y) p
 eval (IntLit x p) (Expo _ ) (IntLit y _) = IntLit (x ^ y) p
+eval (IntLit x p) (Lesser _ ) (IntLit y _) = BoolLit (x < y) p
+eval (IntLit x p) (Greater _ ) (IntLit y _) = BoolLit (x > y) p
+eval (IntLit x p) (LessEq _ ) (IntLit y _) = BoolLit (x <= y) p
+eval (IntLit x p) (GreatEq _ ) (IntLit y _) = BoolLit (x >= y) p
+eval (IntLit x p) (Eq _ ) (IntLit y _) = BoolLit (x == y) p
+eval (IntLit x p) (Diff _ ) (IntLit y _) = BoolLit (x /= y) p
+
 eval (DoubleLit x p) (Plus _ ) (DoubleLit y _) = DoubleLit (x + y) p
 eval (DoubleLit x p) (Minus _ ) (DoubleLit y _) = DoubleLit (x - y) p
 eval (DoubleLit x p) (Mult _ ) (DoubleLit y _) = DoubleLit (x * y) p
 eval (DoubleLit x p) (Divi _ ) (DoubleLit y _) = DoubleLit (x / y) p
 eval (DoubleLit x p) (Expo _ ) (DoubleLit y _) = DoubleLit (x ** y) p
+eval (DoubleLit x p) (Lesser _ ) (DoubleLit y _) = BoolLit (x < y) p
+eval (DoubleLit x p) (Greater _ ) (DoubleLit y _) = BoolLit (x > y) p
+eval (DoubleLit x p) (LessEq _ ) (DoubleLit y _) = BoolLit (x <= y) p
+eval (DoubleLit x p) (GreatEq _ ) (DoubleLit y _) = BoolLit (x >= y) p
+eval (DoubleLit x p) (Eq _ ) (DoubleLit y _) = BoolLit (x == y) p
+eval (DoubleLit x p) (Diff _ ) (DoubleLit y _) = BoolLit (x /= y) p
 
-remainingStmts :: ParsecT [Token] [(Token,Token)] IO([Token])
-remainingStmts = (do a <- assign
-                     return a) <|> (return [])
+eval (BoolLit x p) (And _ ) (BoolLit y _) = BoolLit (x && y) p
+eval (BoolLit x p) (Or _ ) (BoolLit y _) = BoolLit (x || y) p
+eval (BoolLit x p) (Eq _ ) (BoolLit y _) = BoolLit (x == y) p
+eval (BoolLit x p) (Diff _ ) (BoolLit y _) = BoolLit (x /= y) p
+
+compatible_op :: Token -> Token -> Token -> Bool
+compatible_op (IntLit _ _) (Plus _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Minus _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Mult _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Divi _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Mod _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Expo _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Lesser _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Greater _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (LessEq _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (GreatEq _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Eq _ ) (IntLit _ _) = True
+compatible_op (IntLit _ _) (Diff _ ) (IntLit _ _) = True
+
+
+compatible_op (DoubleLit _ _) (Plus _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (Minus _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (Mult _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (Divi _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (Expo _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (Lesser _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (Greater _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (LessEq _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (GreatEq _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (Eq _ ) (DoubleLit _ _) = True
+compatible_op (DoubleLit _ _) (Diff _ ) (DoubleLit _ _) = True
+
+compatible_op (BoolLit _ _) (And _ ) (BoolLit _ _) = True
+compatible_op (BoolLit _ _) (Or _ ) (BoolLit _ _) = True
+compatible_op (BoolLit _ _) (Eq _ ) (BoolLit _ _) = True
+compatible_op (BoolLit _ _) (Diff _ ) (BoolLit _ _) = True
+
+compatible_op _ _ _ = False
 
 compatible :: Token -> Token -> Bool
 compatible (IntLit _ _) (IntLit _ _) = True
 compatible (DoubleLit _ _) (DoubleLit _ _) = True
+compatible (BoolLit _ _) (BoolLit _ _) = True
 compatible _ _ = False
+
+compatible_varDecl :: Token -> Token -> Bool
+compatible_varDecl (Int _) (IntLit _ _) = True
+compatible_varDecl (Double _) (DoubleLit _ _) = True
+compatible_varDecl (Bool _) (BoolLit _ _) = True
+compatible_varDecl _ _ = False
 
 -- funções para a tabela de símbolos
 
