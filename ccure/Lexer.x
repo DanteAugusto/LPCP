@@ -34,6 +34,11 @@ tokens :-
   fun                             { \p s -> Fun (getLC p) }
   endFun                          { \p s -> EndFun (getLC p) }
   return                          { \p s -> Return (getLC p) }
+  
+  while                           { \p s -> While (getLC p) }
+  endWhile                        { \p s -> EndWhile (getLC p) }
+  continue                        { \p s -> Continue (getLC p) }
+  break                           { \p s -> Break (getLC p) }
 
   ";"                             { \p s -> Semicolon (getLC p) }
   "->"                            { \p s -> Arrow (getLC p) }
@@ -90,6 +95,10 @@ data Token =
   Fun                  (Int, Int)        |
   EndFun               (Int, Int)        |
   Return               (Int, Int)        |
+  While                (Int, Int)        |
+  EndWhile             (Int, Int)        |
+  Continue             (Int, Int)        |
+  Break                (Int, Int)        |
   Semicolon            (Int, Int)        |
   Arrow                (Int, Int)        |
   Plus                 (Int, Int)        |

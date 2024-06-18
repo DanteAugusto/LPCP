@@ -44,13 +44,13 @@ varDecl = do
             s <- getState
 
             if(execOn s) then do
-              liftIO(print c)
+              -- liftIO(print c)
               if (not (compatible_varDecl a d)) then fail "type error on declaration"
               else 
                 do
                   updateState(symtable_insert (b, d))
                   s <- getState
-                  liftIO (print s)
+                  -- liftIO (print s)
                   return (a:b:c:d:[e])
             else
               return (a:b:c:d:[e])
@@ -62,7 +62,7 @@ stmts = do
           return (first ++ next)
 
 stmt :: ParsecT [Token] CCureState IO([Token])
-stmt = try varDecl <|> assign <|> printPuts
+stmt = try varDecl <|> assign <|> printPuts <|> whileStmt
 
 printPuts :: ParsecT [Token] CCureState IO([Token])
 printPuts = do 
@@ -77,6 +77,39 @@ printPuts = do
               else pure()
               return (a:b:c:d:[e])
 
+whileStmt :: ParsecT [Token] CCureState IO([Token])
+whileStmt = do
+              -- s <- getState
+              -- liftIO(print s)
+              pc <- getInput
+              -- liftIO( print pc )
+              a <- whileToken
+              b <- enclosed_exp
+              
+              s <- getState
+
+              if(execOn s) then
+                if( not (compatible b (BoolLit True (0,0))) ) then fail "control expression on while must be a boolean"
+                else 
+                  if(get_bool_value b) then do
+                    c <- stmts
+                    d <- endWhileToken
+                    -- liftIO(print pc)
+                    setInput(pc)
+                    return (a:b:c ++ [d])
+                  else do
+                    -- liftIO(print pc)
+                    -- Desativo a execução aqui
+                    updateState(turnExecOff)
+                    c <- stmts
+                    d <- endWhileToken
+                    -- Ativo a execução aqui
+                    updateState(turnExecOn)
+                    return (a:b:c ++ [d])
+              else do
+                c <- stmts
+                d <- endWhileToken
+                return (a:b:c ++ [d])
 
 remainingStmts :: ParsecT [Token] CCureState IO([Token])
 remainingStmts = (do
@@ -92,13 +125,13 @@ assign = do
           d <- semiColonToken
           s <- getState
           if(execOn s) then do
-            liftIO(print c)
+            -- liftIO(print c)
             if (not (compatible (get_type a s) c)) then fail "type error on assign"
             else 
               do 
                 updateState(symtable_update (a, c))
-                s <- getState
-                liftIO (print s)
+                -- s <- getState
+                -- liftIO (print s)
                 return (a:b:c:[d])
           else
             return (a:b:c:[d])
@@ -352,6 +385,10 @@ get_type _ ([], _, _) = error "variable not found"
 get_type (Id id1 p1) (((Id id2 _, value):t), a, b) = if id1 == id2 then value
                                              else get_type (Id id1 p1) (t, a, b)
 -- get_type (Id id1 p1) _ = error "o misterio"
+
+get_bool_value :: Token -> Bool
+get_bool_value (BoolLit a _) = a
+get_bool_value _ = error "token is not a boolean"
 
 symtable_insert :: (Token,Token) -> CCureState -> CCureState
 symtable_insert symbol ([], a, b)  = ([symbol], a, b)

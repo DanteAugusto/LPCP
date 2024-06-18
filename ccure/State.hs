@@ -20,3 +20,9 @@ type CCureState = (SymTableErrada, ScopeStack, ExAct)
 execOn :: CCureState -> Bool
 execOn (_, _, True) = True
 execOn (_, _, False) = False
+
+turnExecOn :: CCureState -> CCureState
+turnExecOn (a, b, _) = (a, b, True)
+
+turnExecOff :: CCureState -> CCureState
+turnExecOff (a, b, _) = (a, b, False)
