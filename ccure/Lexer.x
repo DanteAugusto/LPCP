@@ -19,8 +19,8 @@ tokens :-
   
   typeDeclarations                { \p s -> TypeDeclarations (getLC p) }
   endTypeDeclarations             { \p s -> EndTypeDeclarations (getLC p) }
-  type                            { \p s -> Type (getLC p) }
-  endType                         { \p s -> EndType (getLC p) }
+  register                        { \p s -> Register (getLC p) }
+  endRegister                     { \p s -> EndRegister (getLC p) }
 
   globalVariables                 { \p s -> GlobalVariables (getLC p) }
   endGlobalVariables              { \p s -> EndGlobalVariables (getLC p) }
@@ -79,8 +79,8 @@ tokens :-
 data Token =
   TypeDeclarations     (Int, Int)        |
   EndTypeDeclarations  (Int, Int)        |
-  Type                 (Int, Int)        |                 
-  EndType              (Int, Int)        |
+  Register             (Int, Int)        |                 
+  EndRegister          (Int, Int)        |
   GlobalVariables      (Int, Int)        |
   EndGlobalVariables   (Int, Int)        |
   Subprograms          (Int, Int)        |

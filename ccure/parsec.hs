@@ -8,165 +8,16 @@
 module Main (main) where
 
 import Lexer
+import Tokens
 import Text.Parsec
 import Control.Monad.IO.Class
-
 import System.IO.Unsafe
 
--- parsers para os tokens
-
+-- alias para tipos usados
 type ParsecType = ParsecT [Token] [(Token,Token)] IO (Token)
 type ParsecTokenType = ParsecT [Token] [(Token,Token)] IO (Token)
 
-programToken = tokenPrim show update_pos get_token where
-  get_token (Program p) = Just (Program p)
-  get_token _           = Nothing
-
-endToken = tokenPrim show update_pos get_token where
-  get_token (End p) = Just (End p)
-  get_token _           = Nothing
-
-openParentToken = tokenPrim show update_pos get_token where
-  get_token (OpenParent p) = Just (OpenParent p)
-  get_token _           = Nothing
-
-closeParentToken = tokenPrim show update_pos get_token where
-  get_token (CloseParent p) = Just (CloseParent p)
-  get_token _           = Nothing
-
-idToken = tokenPrim show update_pos get_token where
-  get_token (Id x p) = Just (Id x p)
-  get_token _        = Nothing
-
-semiColonToken = tokenPrim show update_pos get_token where
-  get_token (Semicolon p) = Just (Semicolon p)
-  get_token _             = Nothing
-
-commaToken = tokenPrim show update_pos get_token where
-  get_token (Comma p) = Just (Comma p)
-  get_token _             = Nothing
-
-assignToken = tokenPrim show update_pos get_token where
-  get_token (Assign p) = Just (Assign p)
-  get_token _          = Nothing
-
-intToken = tokenPrim show update_pos get_token where
-  get_token (Int p) = Just (Int p)
-  get_token _         = Nothing
-
-doubleToken = tokenPrim show update_pos get_token where
-  get_token (Double p) = Just (Double p)
-  get_token _         = Nothing
-
-boolToken = tokenPrim show update_pos get_token where
-  get_token (Bool p) = Just (Bool p)
-  get_token _         = Nothing
-
-castToken :: ParsecT [Token] st IO (Token)
-castToken = tokenPrim show update_pos get_token where
-  get_token (Cast p) = Just (Cast p)
-  get_token _         = Nothing
-
-putsToken :: ParsecT [Token] st IO (Token)
-putsToken = tokenPrim show update_pos get_token where
-  get_token (Puts p) = Just (Puts p)
-  get_token _         = Nothing
-
-minusToken :: ParsecT [Token] st IO (Token)
-minusToken = tokenPrim show update_pos get_token where
-  get_token (Minus p) = Just (Minus p)
-  get_token _       = Nothing
-
-diviToken :: ParsecT [Token] st IO (Token)
-diviToken = tokenPrim show update_pos get_token where
-  get_token (Divi p) = Just (Divi p)
-  get_token _       = Nothing
-
-plusToken = tokenPrim show update_pos get_token where
-  get_token (Plus p) = Just (Plus p)
-  get_token _       = Nothing 
-
-multToken :: ParsecT [Token] st IO (Token)
-multToken = tokenPrim show update_pos get_token where
-  get_token (Mult p) = Just (Mult p)
-  get_token _       = Nothing 
-
-modToken :: ParsecT [Token] st IO (Token)
-modToken = tokenPrim show update_pos get_token where
-  get_token (Mod p) = Just (Mod p)
-  get_token _       = Nothing 
-
-expoToken :: ParsecT [Token] st IO (Token)
-expoToken = tokenPrim show update_pos get_token where
-  get_token (Expo p) = Just (Expo p)
-  get_token _       = Nothing 
-
-andToken :: ParsecT [Token] st IO (Token)
-andToken = tokenPrim show update_pos get_token where
-  get_token (And p) = Just (And p)
-  get_token _       = Nothing
-
-orToken :: ParsecT [Token] st IO (Token)
-orToken = tokenPrim show update_pos get_token where
-  get_token (Or p) = Just (Or p)
-  get_token _       = Nothing 
-
-lessToken :: ParsecT [Token] st IO (Token)
-lessToken = tokenPrim show update_pos get_token where
-  get_token (Lesser p) = Just (Lesser p)
-  get_token _       = Nothing 
-
-greatToken :: ParsecT [Token] st IO (Token)
-greatToken = tokenPrim show update_pos get_token where
-  get_token (Greater p) = Just (Greater p)
-  get_token _       = Nothing 
-
-leqToken :: ParsecT [Token] st IO (Token)
-leqToken = tokenPrim show update_pos get_token where
-  get_token (LessEq p) = Just (LessEq p)
-  get_token _       = Nothing 
-
-geqToken :: ParsecT [Token] st IO (Token)
-geqToken = tokenPrim show update_pos get_token where
-  get_token (GreatEq p) = Just (GreatEq p)
-  get_token _       = Nothing 
-
-eqToken :: ParsecT [Token] st IO (Token)
-eqToken = tokenPrim show update_pos get_token where
-  get_token (Eq p) = Just (Eq p)
-  get_token _       = Nothing 
-
-diffToken :: ParsecT [Token] st IO (Token)
-diffToken = tokenPrim show update_pos get_token where
-  get_token (Diff p) = Just (Diff p)
-  get_token _       = Nothing 
-
-negToken :: ParsecT [Token] st IO (Token)
-negToken = tokenPrim show update_pos get_token where
-  get_token (Neg p) = Just (Neg p)
-  get_token _       = Nothing 
-
-
-update_pos :: SourcePos -> Token -> [Token] -> SourcePos
-update_pos pos _ (tok:_) = pos -- necessita melhoria
-update_pos pos _ []      = pos  
-
-
-intLitToken = tokenPrim show update_pos get_token where
-  get_token (IntLit x p) = Just (IntLit x p)
-  get_token _      = Nothing
-
-doubleLitToken = tokenPrim show update_pos get_token where
-  get_token (DoubleLit x p) = Just (DoubleLit x p)
-  get_token _      = Nothing
-
-boolLitToken :: ParsecT [Token] st IO (Token)
-boolLitToken = tokenPrim show update_pos get_token where
-  get_token (BoolLit x p) = Just (BoolLit x p)
-  get_token _      = Nothing
-
 -- parsers para os não-terminais
-
 program :: ParsecT [Token] [(Token,Token)] IO ([Token])
 program = do
             a <- programToken 
@@ -327,8 +178,8 @@ enclosed_exp = do
                 c <- closeParentToken
                 return b 
 
-someTypeToken :: ParsecT [Token] [(Token,Token)] IO(Token) 
-someTypeToken = try intToken <|> doubleToken
+numTypeToken :: ParsecT [Token] [(Token,Token)] IO(Token) 
+numTypeToken = try intToken <|> doubleToken
 
 castParser :: ParsecT [Token] [(Token,Token)] IO(Token)   
 castParser = do 
@@ -336,7 +187,7 @@ castParser = do
               openP <- openParentToken
               exp <- expression
               c <- commaToken
-              t <- someTypeToken
+              t <- numTypeToken
               closeP <- closeParentToken  
               if (not (canCast exp t)) then fail "cast error"
               else
@@ -440,7 +291,6 @@ compatible_op (IntLit _ _) (LessEq _ ) (IntLit _ _) = True
 compatible_op (IntLit _ _) (GreatEq _ ) (IntLit _ _) = True
 compatible_op (IntLit _ _) (Eq _ ) (IntLit _ _) = True
 compatible_op (IntLit _ _) (Diff _ ) (IntLit _ _) = True
-
 
 compatible_op (DoubleLit _ _) (Plus _ ) (DoubleLit _ _) = True
 compatible_op (DoubleLit _ _) (Minus _ ) (DoubleLit _ _) = True
