@@ -8,30 +8,31 @@
 module Main (main) where
 
 import Lexer
+import State
 import Tokens
 import Text.Parsec
 import Control.Monad.IO.Class
 import System.IO.Unsafe
 
 -- alias para tipos usados
-type ParsecType = ParsecT [Token] [(Token,Token)] IO (Token)
-type ParsecTokenType = ParsecT [Token] [(Token,Token)] IO (Token)
+type ParsecType = ParsecT [Token] CCureState IO (Token)
+type ParsecTokenType = ParsecT [Token] CCureState IO (Token)
 
 -- parsers para os não-terminais
-program :: ParsecT [Token] [(Token,Token)] IO ([Token])
+program :: ParsecT [Token] CCureState IO ([Token])
 program = do
             a <- programToken 
             b <- stmts
             c <- endToken
             s <- getState
             eof
-            -- liftIO (print s)
+            liftIO (print s)
             return ([a] ++ b ++ [c])
 
-typeToken :: ParsecT [Token] [(Token,Token)] IO(Token)
+typeToken :: ParsecT [Token] CCureState IO(Token)
 typeToken = try intToken <|> doubleToken <|> boolToken
 
-varDecl :: ParsecT [Token] [(Token,Token)] IO([Token])
+varDecl :: ParsecT [Token] CCureState IO([Token])
 varDecl = do
             a <- typeToken
             b <- idToken
@@ -41,147 +42,153 @@ varDecl = do
             -- liftIO (print d)
             e <- semiColonToken
             s <- getState
-            liftIO(print c)
-            if (not (compatible_varDecl a d)) then fail "type error on declaration"
-            else 
-              do
-                updateState(symtable_insert (b, d))
-                s <- getState
-                liftIO (print s)
-                return (a:b:c:d:[e])
 
-stmts :: ParsecT [Token] [(Token,Token)] IO([Token])
+            if(execOn s) then do
+              liftIO(print c)
+              if (not (compatible_varDecl a d)) then fail "type error on declaration"
+              else 
+                do
+                  updateState(symtable_insert (b, d))
+                  s <- getState
+                  liftIO (print s)
+                  return (a:b:c:d:[e])
+            else
+              return (a:b:c:d:[e])
+
+stmts :: ParsecT [Token] CCureState IO([Token])
 stmts = do
           first <- stmt
           next <- remainingStmts
           return (first ++ next)
 
-stmt :: ParsecT [Token] [(Token,Token)] IO([Token])
+stmt :: ParsecT [Token] CCureState IO([Token])
 stmt = try varDecl <|> assign <|> printPuts
 
-printPuts :: ParsecT [Token] [(Token,Token)] IO([Token])
+printPuts :: ParsecT [Token] CCureState IO([Token])
 printPuts = do 
               a <- putsToken
               b <- openParentToken
               c <- expression
               d <- closeParentToken
               e <- semiColonToken
-              liftIO (print c)
+              s <- getState
+              if(execOn s) then do
+                liftIO (print c)
+              else pure()
               return (a:b:c:d:[e])
 
 
-remainingStmts :: ParsecT [Token] [(Token,Token)] IO([Token])
+remainingStmts :: ParsecT [Token] CCureState IO([Token])
 remainingStmts = (do
                   a <- stmt
                   b <- remainingStmts 
                   return (a ++ b)) <|> return ([])
 
-assign :: ParsecT [Token] [(Token,Token)] IO([Token])
+assign :: ParsecT [Token] CCureState IO([Token])
 assign = do
           a <- idToken
           b <- assignToken
           c <- expression
           d <- semiColonToken
           s <- getState
-          liftIO(print c)
-          if (not (compatible (get_type a s) c)) then fail "type error on assign"
-          else 
-            do 
-              updateState(symtable_update (a, c))
-              s <- getState
-              liftIO (print s)
-              return (a:b:c:[d])
+          if(execOn s) then do
+            liftIO(print c)
+            if (not (compatible (get_type a s) c)) then fail "type error on assign"
+            else 
+              do 
+                updateState(symtable_update (a, c))
+                s <- getState
+                liftIO (print s)
+                return (a:b:c:[d])
+          else
+            return (a:b:c:[d])
 
-get_type :: Token -> [(Token, Token)] -> Token
-get_type _ [] = error "variable not found"
-get_type (Id id1 p1) ((Id id2 _, value):t) = if id1 == id2 then value
-                                             else get_type (Id id1 p1) t
--- get_type (Id id1 p1) _ = error "o misterio"
-
--- expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+-- expression :: ParsecT [Token] CCureState IO(Token)
 -- expression = try bin_expression <|> una_expression
 
-expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+expression :: ParsecT [Token] CCureState IO(Token)
 expression = bool_expression
 
-bool_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+bool_expression :: ParsecT [Token] CCureState IO(Token)
 bool_expression = and_expression
 
-and_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+and_expression :: ParsecT [Token] CCureState IO(Token)
 and_expression = (do 
                     a <- or_expression
                     result <- eval_remaining a andToken or_expression
                     return result)
 
-or_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+or_expression :: ParsecT [Token] CCureState IO(Token)
 or_expression = (do 
                     a <- neg_expression
                     result <- eval_remaining a orToken neg_expression
                     return result)
 
-neg_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+neg_expression :: ParsecT [Token] CCureState IO(Token)
 neg_expression = (do 
                     op <- negToken
                     rel <- rel_expression
-                    return (eval_unary op rel)) <|>
+                    s <- getState
+                    return (eval_unary op rel (execOn s))) <|>
                   (do 
                     a <- rel_expression
                     return a)
 
-rel_operator :: ParsecT [Token] [(Token,Token)] IO(Token)
+rel_operator :: ParsecT [Token] CCureState IO(Token)
 rel_operator = try eqToken <|> diffToken <|> leqToken <|> geqToken <|> lessToken <|> greatToken
 
-rel_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+rel_expression :: ParsecT [Token] CCureState IO(Token)
 rel_expression = (do 
                     a <- sum_expression
                     result <- eval_remaining a rel_operator sum_expression
                     return result)
 
-sum_minus :: ParsecT [Token] [(Token,Token)] IO(Token)
+sum_minus :: ParsecT [Token] CCureState IO(Token)
 sum_minus = try plusToken <|> minusToken
 
-sum_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+sum_expression :: ParsecT [Token] CCureState IO(Token)
 sum_expression = (do 
                     a <- unary_minus_expression
                     result <- eval_remaining a sum_minus unary_minus_expression
                     return result)
 
-unary_minus_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
+unary_minus_expression :: ParsecT [Token] CCureState IO(Token)
 unary_minus_expression = (do 
                             op <- minusToken
                             t <- term
-                            return (eval_unary op t)) <|>
+                            s <- getState
+                            return (eval_unary op t (execOn s))) <|>
                          (do 
                             a <- term
                             return a)                  
 
-mult_div_mod :: ParsecT [Token] [(Token,Token)] IO(Token)
+mult_div_mod :: ParsecT [Token] CCureState IO(Token)
 mult_div_mod = try multToken <|> diviToken <|> modToken
                 
-term :: ParsecT [Token] [(Token,Token)] IO(Token)
+term :: ParsecT [Token] CCureState IO(Token)
 term = (do
           a <- factor
           result <- eval_remaining a mult_div_mod factor
           return result)
 
-factor :: ParsecT [Token] [(Token,Token)] IO(Token)
+factor :: ParsecT [Token] CCureState IO(Token)
 factor = (do
             a <- expi
             result <- eval_remaining_right a expoToken expi
             return result
           )
 
-enclosed_exp :: ParsecT [Token] [(Token,Token)] IO(Token)      
+enclosed_exp :: ParsecT [Token] CCureState IO(Token)      
 enclosed_exp = do
                 a <- openParentToken
                 b <- expression
                 c <- closeParentToken
                 return b 
 
-numTypeToken :: ParsecT [Token] [(Token,Token)] IO(Token) 
+numTypeToken :: ParsecT [Token] CCureState IO(Token) 
 numTypeToken = try intToken <|> doubleToken
 
-castParser :: ParsecT [Token] [(Token,Token)] IO(Token)   
+castParser :: ParsecT [Token] CCureState IO(Token)   
 castParser = do 
               ct <- castToken
               openP <- openParentToken
@@ -205,78 +212,93 @@ cast (IntLit v p) (Int _)       = IntLit v p
 cast (IntLit v p) (Double _)    = DoubleLit (fromIntegral v) p
 cast (DoubleLit v p) (Double _) = DoubleLit v p
 
-expi :: ParsecT [Token] [(Token,Token)] IO(Token)      
+expi :: ParsecT [Token] CCureState IO(Token)      
 expi = try intLitToken <|> doubleLitToken <|> boolLitToken <|> castParser <|> enclosed_exp <|> variableParser
 
-variableParser :: ParsecT [Token] [(Token,Token)] IO(Token)
+variableParser :: ParsecT [Token] CCureState IO(Token)
 variableParser = do
                   id <- idToken
                   s <- getState
-                  return (getMayb (symtable_get id s))
+                  if(execOn s) then
+                    return (getMayb (symtable_get id s))
+                  else
+                    return (IntLit (0) (0 , 0))
+
                   
 getMayb :: Maybe a -> a
 getMayb (Just a) = a
 
 --- funções considerando associatividade à esquerda                  
-eval_remaining :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] [(Token,Token)] IO(Token)
+eval_remaining :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] CCureState IO(Token)
 eval_remaining n1 operator remain = (do
                                 op <- operator
                                 n2 <- remain
-                                if (not (compatible_op n1 op n2)) then fail "type error on evaluating expression"
-                                else
-                                  do
-                                    result <- eval_remaining (eval n1 op n2) operator remain
-                                    return (result)) 
+                                s <- getState
+                                if (execOn s) then do
+                                  if (not (compatible_op n1 op n2)) then fail "type error on evaluating expression"
+                                  else
+                                    do
+                                      result <- eval_remaining (eval n1 op n2 (execOn s)) operator remain
+                                      return (result)
+                                else do
+                                  result <- eval_remaining (eval n1 op n2 (execOn s)) operator remain
+                                  return (result))
                               <|> return (n1)
                     
-eval_remaining_right :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] [(Token,Token)] IO(Token)
+eval_remaining_right :: Token -> ParsecTokenType -> ParsecType -> ParsecT [Token] CCureState IO(Token)
 eval_remaining_right n1 operator remain = (do
                                 op <- operator
                                 n2 <- remain
+                                s <- getState
                                 result <- eval_remaining_right n2 operator remain
-                                if (not (compatible_op n1 op n2)) then fail "type error on evaluating expression"
-                                else
-                                  do
-                                    return (eval n1 op result)) 
+                                if(execOn s) then do
+                                  if (not (compatible_op n1 op n2)) then fail "type error on evaluating expression"
+                                  else
+                                    do
+                                      return (eval n1 op result (execOn s))
+                                else do
+                                  return (eval n1 op result (execOn s)))
                               <|> return (n1)        
 
-eval_unary :: Token -> Token -> Token
-eval_unary (Neg p) (BoolLit x _) = BoolLit (not x) p
-eval_unary (Plus p) (IntLit x _) = IntLit (x) p
-eval_unary (Plus p) (DoubleLit x _) = DoubleLit (x) p
-eval_unary (Minus p) (IntLit x _) = IntLit (-x) p
-eval_unary (Minus p) (DoubleLit x _) = DoubleLit (-x) p
+eval_unary :: Token -> Token -> Bool -> Token
+eval_unary _ _ False = IntLit (0) (0 , 0)                         -- Não importa a saída, pois o exec ta off
+eval_unary (Neg p) (BoolLit x _) True = BoolLit (not x) p
+eval_unary (Plus p) (IntLit x _) True = IntLit (x) p
+eval_unary (Plus p) (DoubleLit x _) True = DoubleLit (x) p
+eval_unary (Minus p) (IntLit x _) True = IntLit (-x) p
+eval_unary (Minus p) (DoubleLit x _) True = DoubleLit (-x) p
 
-eval :: Token -> Token -> Token -> Token
-eval (IntLit x p) (Plus _ ) (IntLit y _) = IntLit (x + y) p
-eval (IntLit x p) (Minus _ ) (IntLit y _) = IntLit (x - y) p
-eval (IntLit x p) (Mult _ ) (IntLit y _) = IntLit (x * y) p
-eval (IntLit x p) (Divi _ ) (IntLit y _) = IntLit (x `div` y) p
-eval (IntLit x p) (Mod _ ) (IntLit y _) = IntLit (x `mod` y) p
-eval (IntLit x p) (Expo _ ) (IntLit y _) = IntLit (x ^ y) p
-eval (IntLit x p) (Lesser _ ) (IntLit y _) = BoolLit (x < y) p
-eval (IntLit x p) (Greater _ ) (IntLit y _) = BoolLit (x > y) p
-eval (IntLit x p) (LessEq _ ) (IntLit y _) = BoolLit (x <= y) p
-eval (IntLit x p) (GreatEq _ ) (IntLit y _) = BoolLit (x >= y) p
-eval (IntLit x p) (Eq _ ) (IntLit y _) = BoolLit (x == y) p
-eval (IntLit x p) (Diff _ ) (IntLit y _) = BoolLit (x /= y) p
+eval :: Token -> Token -> Token -> Bool -> Token
+eval _ _ _ False = IntLit (0) (0 , 0)                         -- Não importa a saída, pois o exec ta off
+eval (IntLit x p) (Plus _ ) (IntLit y _) True = IntLit (x + y) p
+eval (IntLit x p) (Minus _ ) (IntLit y _) True = IntLit (x - y) p
+eval (IntLit x p) (Mult _ ) (IntLit y _) True = IntLit (x * y) p
+eval (IntLit x p) (Divi _ ) (IntLit y _) True = IntLit (x `div` y) p
+eval (IntLit x p) (Mod _ ) (IntLit y _) True = IntLit (x `mod` y) p
+eval (IntLit x p) (Expo _ ) (IntLit y _) True = IntLit (x ^ y) p
+eval (IntLit x p) (Lesser _ ) (IntLit y _) True = BoolLit (x < y) p
+eval (IntLit x p) (Greater _ ) (IntLit y _) True = BoolLit (x > y) p
+eval (IntLit x p) (LessEq _ ) (IntLit y _) True = BoolLit (x <= y) p
+eval (IntLit x p) (GreatEq _ ) (IntLit y _) True = BoolLit (x >= y) p
+eval (IntLit x p) (Eq _ ) (IntLit y _) True = BoolLit (x == y) p
+eval (IntLit x p) (Diff _ ) (IntLit y _) True = BoolLit (x /= y) p
 
-eval (DoubleLit x p) (Plus _ ) (DoubleLit y _) = DoubleLit (x + y) p
-eval (DoubleLit x p) (Minus _ ) (DoubleLit y _) = DoubleLit (x - y) p
-eval (DoubleLit x p) (Mult _ ) (DoubleLit y _) = DoubleLit (x * y) p
-eval (DoubleLit x p) (Divi _ ) (DoubleLit y _) = DoubleLit (x / y) p
-eval (DoubleLit x p) (Expo _ ) (DoubleLit y _) = DoubleLit (x ** y) p
-eval (DoubleLit x p) (Lesser _ ) (DoubleLit y _) = BoolLit (x < y) p
-eval (DoubleLit x p) (Greater _ ) (DoubleLit y _) = BoolLit (x > y) p
-eval (DoubleLit x p) (LessEq _ ) (DoubleLit y _) = BoolLit (x <= y) p
-eval (DoubleLit x p) (GreatEq _ ) (DoubleLit y _) = BoolLit (x >= y) p
-eval (DoubleLit x p) (Eq _ ) (DoubleLit y _) = BoolLit (x == y) p
-eval (DoubleLit x p) (Diff _ ) (DoubleLit y _) = BoolLit (x /= y) p
+eval (DoubleLit x p) (Plus _ ) (DoubleLit y _) True = DoubleLit (x + y) p
+eval (DoubleLit x p) (Minus _ ) (DoubleLit y _) True = DoubleLit (x - y) p
+eval (DoubleLit x p) (Mult _ ) (DoubleLit y _) True = DoubleLit (x * y) p
+eval (DoubleLit x p) (Divi _ ) (DoubleLit y _) True = DoubleLit (x / y) p
+eval (DoubleLit x p) (Expo _ ) (DoubleLit y _) True = DoubleLit (x ** y) p
+eval (DoubleLit x p) (Lesser _ ) (DoubleLit y _) True = BoolLit (x < y) p
+eval (DoubleLit x p) (Greater _ ) (DoubleLit y _) True = BoolLit (x > y) p
+eval (DoubleLit x p) (LessEq _ ) (DoubleLit y _) True = BoolLit (x <= y) p
+eval (DoubleLit x p) (GreatEq _ ) (DoubleLit y _) True = BoolLit (x >= y) p
+eval (DoubleLit x p) (Eq _ ) (DoubleLit y _) True = BoolLit (x == y) p
+eval (DoubleLit x p) (Diff _ ) (DoubleLit y _) True = BoolLit (x /= y) p
 
-eval (BoolLit x p) (And _ ) (BoolLit y _) = BoolLit (x && y) p
-eval (BoolLit x p) (Or _ ) (BoolLit y _) = BoolLit (x || y) p
-eval (BoolLit x p) (Eq _ ) (BoolLit y _) = BoolLit (x == y) p
-eval (BoolLit x p) (Diff _ ) (BoolLit y _) = BoolLit (x /= y) p
+eval (BoolLit x p) (And _ ) (BoolLit y _) True = BoolLit (x && y) p
+eval (BoolLit x p) (Or _ ) (BoolLit y _) True = BoolLit (x || y) p
+eval (BoolLit x p) (Eq _ ) (BoolLit y _) True = BoolLit (x == y) p
+eval (BoolLit x p) (Diff _ ) (BoolLit y _) True = BoolLit (x /= y) p
 
 compatible_op :: Token -> Token -> Token -> Bool
 compatible_op (IntLit _ _) (Plus _ ) (IntLit _ _) = True
@@ -325,32 +347,47 @@ compatible_varDecl _ _ = False
 
 -- funções para a tabela de símbolos
 
-symtable_insert :: (Token,Token) -> [(Token,Token)] -> [(Token,Token)]
-symtable_insert symbol []  = [symbol]
-symtable_insert symbol symtable = symtable ++ [symbol]
+get_type :: Token -> CCureState -> Token
+get_type _ ([], _, _) = error "variable not found"
+get_type (Id id1 p1) (((Id id2 _, value):t), a, b) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b)
+-- get_type (Id id1 p1) _ = error "o misterio"
 
-symtable_update :: (Token,Token) -> [(Token,Token)] -> [(Token,Token)]
-symtable_update _ [] = fail "variable not found"
-symtable_update (Id id1 p1, v1) ((Id id2 p2, v2):t) = 
+symtable_insert :: (Token,Token) -> CCureState -> CCureState
+symtable_insert symbol ([], a, b)  = ([symbol], a, b)
+symtable_insert symbol (symtable, a, b) = ((symtable ++ [symbol]), a, b)
+
+symtable_update :: (Token,Token) -> CCureState -> CCureState
+symtable_update a (b, c, d) = (symtable_update_aux a b, c, d)
+
+symtable_update_aux :: (Token, Token) -> SymTableErrada -> SymTableErrada
+symtable_update_aux _ [] = fail "variable not found"
+symtable_update_aux (Id id1 p1, v1) ((Id id2 p2, v2):t) = 
                                if id1 == id2 then (Id id1 p2, v1) : t
-                               else (Id id2 p2, v2) : symtable_update (Id id1 p1, v1) t
+                               else (Id id2 p2, v2) : symtable_update_aux (Id id1 p1, v1) t
 
-symtable_remove :: (Token,Token) -> [(Token,Token)] -> [(Token,Token)]
-symtable_remove _ [] = fail "variable not found"
-symtable_remove (id1, v1) ((id2, v2):t) = 
+symtable_remove :: (Token,Token) -> CCureState -> CCureState
+symtable_remove a (b, c, d) = (symtable_remove_aux a b, c, d)
+
+symtable_remove_aux :: (Token,Token) -> SymTableErrada -> SymTableErrada
+symtable_remove_aux _ [] = fail "variable not found"
+symtable_remove_aux (id1, v1) ((id2, v2):t) = 
                                if id1 == id2 then t
-                               else (id2, v2) : symtable_remove (id1, v1) t                               
+                               else (id2, v2) : symtable_remove_aux (id1, v1) t   
 
-symtable_get :: Token -> [(Token,Token)] -> Maybe Token
-symtable_get _ [] = fail "variable not found"
-symtable_get (Id id1 p1) ((Id id2 p2, v2):t) = 
+symtable_get :: Token -> CCureState -> Maybe Token
+symtable_get a (b, _, _) = symtable_get_aux a b
+
+symtable_get_aux :: Token -> SymTableErrada -> Maybe Token
+symtable_get_aux _ [] = fail "variable not found"
+symtable_get_aux (Id id1 p1) ((Id id2 p2, v2):t) = 
                             if (id1 == id2) then Just v2
-                            else symtable_get (Id id1 p1) t
+                            else symtable_get_aux (Id id1 p1) t
 
 -- invocação do parser para o símbolo de partida 
 
 parser :: [Token] -> IO (Either ParseError [Token])
-parser tokens = runParserT program [] "Error message" tokens
+parser tokens = runParserT program ([], [], True) "Error message" tokens
 
 main :: IO ()
 main = case unsafePerformIO (parser (getTokens "soma.ccr")) of
