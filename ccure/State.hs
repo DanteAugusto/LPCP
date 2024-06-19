@@ -5,9 +5,8 @@ import Text.Parsec
 
 data LoopStatus = OK | BREAK | CONTINUE deriving (Eq, Show)
 type ExAct = Bool
--- Nome, profundidade de chamada, valor idea do grande amigo fouquet
-type SymTable = [(String, [(Int, Token)])]
-type SymTableErrada = [(Token, Token)]
+-- Nome, profundidade de chamada, valor e escopo
+type SymTable = [(Token, String, [(Int, Token)])]
 
 
 -- type ExecStack = [[]] pilha de instancias de ra (linha pra onde devo voltar e valor de retorno)
@@ -15,12 +14,16 @@ type SymTableErrada = [(Token, Token)]
 type ScopeStack = [String]
 type LoopStack = [LoopStatus]
 
-type CCureState = (SymTableErrada, ScopeStack, LoopStack, ExAct)
+type CCureState = (SymTable, ScopeStack, LoopStack, ExAct)
 
 -- funções auxiliares para o CCureState
 
-addToLoopStack :: CCureState -> LoopStatus -> CCureState
-addToLoopStack (a, b,stack, c) newLoopStatus = (a, b, newLoopStatus:stack, c)
+addToLoopStack :: LoopStatus -> CCureState -> CCureState
+addToLoopStack newLoopStatus (a, b,stack, c)  = (a, b, newLoopStatus:stack, c)
+
+-- removeFromLoopStack :: CCureState -> CCureState
+-- removeFromLoopStack (_, _, [], _) = error "trying to remove unexistent Loop"
+-- removeFromLoopStack (a, b, stack:tail, c) = (a, b, tail, c)
 
 removeFromLoopStack :: CCureState -> CCureState
 removeFromLoopStack (_, _, [], _) = error "trying to remove unexistent Loop"
@@ -32,8 +35,8 @@ getCurrentLoopStatus _ = error "trying to access unexistent LoopStatus"
 
 
 
-addToScopeStack :: CCureState -> String -> CCureState
-addToScopeStack (a, stack, b, c) newScope = (a, newScope:stack, b, c)
+addToScopeStack :: String -> CCureState -> CCureState
+addToScopeStack newScope (a, stack, b, c) = (a, newScope:stack, b, c)
 -- addToScopeStack (_, top:tail, _) newScope = (_, (newScope ++ ['#'] ++ top):top:tail, _)
 
 getCurrentScope :: CCureState -> String

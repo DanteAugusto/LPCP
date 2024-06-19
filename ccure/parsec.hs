@@ -21,11 +21,15 @@ type ParsecTokenType = ParsecT [Token] CCureState IO (Token)
 -- parsers para os não-terminais
 program :: ParsecT [Token] CCureState IO ([Token])
 program = do
+            updateState(addToScopeStack "program")
             a <- programToken 
             b <- stmts
             c <- endToken
             s <- getState
+            updateState(symtable_remove_scope (getCurrentScope s))
+            updateState(removeFromScopeStack)
             eof
+            s <- getState
             liftIO (print s)
             return ([a] ++ b ++ [c])
 
@@ -48,7 +52,8 @@ varDecl = do
               if (not (compatible_varDecl a d)) then fail "type error on declaration"
               else 
                 do
-                  updateState(symtable_insert (b, d))
+                  s <- getState
+                  updateState(symtable_insert (b, getCurrentScope s, [(0, d)]))
                   s <- getState
                   -- liftIO (print s)
                   return (a:b:c:d:[e])
@@ -94,7 +99,9 @@ whileStmt = do
               
               s <- getState
 
-              if(execOn s) then
+              if(execOn s) then do
+                updateState(addToScopeStack "while")
+                updateState(addToLoopStack OK)
                 if( not (compatible b (BoolLit True (0,0))) ) then fail "control expression on while must be a boolean"
                 else 
                   if(get_bool_value b) then do
@@ -105,13 +112,25 @@ whileStmt = do
 
                     s <- getState
                     -- Se apos os stmts o exec tiver off, leu um break ou continue
-                    -- if(not execOn s) then
+                    if(not (execOn s)) then do
                       -- Se foi um break, acaba o loop
-
+                      if((getCurrentLoopStatus s) == BREAK) then do 
+                        updateState(turnExecOn)
+                        s <- getState
+                        updateState(symtable_remove_scope (getCurrentScope s))
+                        updateState(removeFromScopeStack)
+                        updateState(removeFromLoopStack)
+                        return (a:b:c ++ [d])
+                      else do
+                        return (a:b:c ++ [d])
                       -- Se foi um continue, continua o loop
-                    -- else do
-                    setInput(pc)
-                    return (a:b:c ++ [d])
+                    else do
+                      setInput(pc)
+                      s <- getState
+                      updateState(symtable_remove_scope (getCurrentScope s))
+                      updateState(removeFromScopeStack)
+                      updateState(removeFromLoopStack)
+                      return (a:b:c ++ [d])
                   else do
                     -- liftIO(print pc)
                     -- Desativo a execução aqui
@@ -120,6 +139,9 @@ whileStmt = do
                     d <- endWhileToken
                     -- Ativo a execução aqui
                     updateState(turnExecOn)
+                    s <- getState
+                    updateState(removeFromScopeStack)
+                    updateState(removeFromLoopStack)
                     return (a:b:c ++ [d])
               else do
                 c <- stmts
@@ -139,8 +161,14 @@ breakStmt = do
                 s <- getState
 
 
-                if((getCurrentScope s)== "while") then
+                if((getCurrentScope s)== "while") then do
                   updateState(turnExecOff)
+                  -- updateState((addToLoopStack.removeFromLoopStack) BREAK)
+                  updateState(removeFromLoopStack)
+                  updateState(addToLoopStack BREAK)
+                  -- if((getCurrentLoopStatus s) == OK) then
+                  --   updateState(addToLoopStack BREAK)
+                  -- else pure()
                 else
                   fail "break statement out of loop structure"
               else pure()
@@ -160,7 +188,7 @@ assign = do
             if (not (compatible (get_type a s) c)) then fail "type error on assign"
             else 
               do 
-                updateState(symtable_update (a, c))
+                updateState(symtable_update (a, 0 ,c))
                 -- s <- getState
                 -- liftIO (print s)
                 return (a:b:c:[d])
@@ -284,7 +312,7 @@ variableParser = do
                   id <- idToken
                   s <- getState
                   if(execOn s) then
-                    return (getMayb (symtable_get id s))
+                    return (getMayb (symtable_get (id, 0) s))
                   else
                     return (IntLit (0) (0 , 0))
 
@@ -413,7 +441,7 @@ compatible_varDecl _ _ = False
 
 get_type :: Token -> CCureState -> Token
 get_type _ ([], _, _, _) = error "variable not found"
-get_type (Id id1 p1) (((Id id2 _, value):t), a, b, c) = if id1 == id2 then value
+get_type (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c) = if id1 == id2 then value
                                              else get_type (Id id1 p1) (t, a, b, c)
 -- get_type (Id id1 p1) _ = error "o misterio"
 
@@ -421,36 +449,46 @@ get_bool_value :: Token -> Bool
 get_bool_value (BoolLit a _) = a
 get_bool_value _ = error "token is not a boolean"
 
-symtable_insert :: (Token,Token) -> CCureState -> CCureState
+symtable_insert :: (Token, String, [(Int, Token)]) -> CCureState -> CCureState
 symtable_insert symbol ([], a, b, c)  = ([symbol], a, b, c)
-symtable_insert symbol (symtable, a, b, c) = ((symtable ++ [symbol]), a, b, c)
+symtable_insert symbol (symtable, a, b, c) = ((symbol:symtable), a, b, c)
 
-symtable_update :: (Token,Token) -> CCureState -> CCureState
+symtable_update :: (Token, Int, Token) -> CCureState -> CCureState
 symtable_update a (b, c, d, e) = (symtable_update_aux a b, c, d, e)
 
-symtable_update_aux :: (Token, Token) -> SymTableErrada -> SymTableErrada
+symtable_update_aux :: (Token, Int, Token) -> SymTable -> SymTable
 symtable_update_aux _ [] = fail "variable not found"
-symtable_update_aux (Id id1 p1, v1) ((Id id2 p2, v2):t) = 
-                               if id1 == id2 then (Id id1 p2, v1) : t
-                               else (Id id2 p2, v2) : symtable_update_aux (Id id1 p1, v1) t
+symtable_update_aux (Id id1 p1, depth1, v1) ((Id id2 p2, scop, (depth2, v2):tail):t   ) = 
+                               if ((id1, depth1) == (id2, depth2)) then (Id id2 p1, scop, (depth2, v1):tail):t
+                               else (Id id2 p2, scop, (depth2, v2):tail) : symtable_update_aux (Id id1 p1, depth1, v1) t
 
-symtable_remove :: (Token,Token) -> CCureState -> CCureState
-symtable_remove a (b, c, d, e) = (symtable_remove_aux a b, c, d, e)
+-- Percorre a lista enquanto String for igual a escopo. Depois para
+symtable_remove_scope :: String -> CCureState -> CCureState
+symtable_remove_scope a (b, c, d, e) = (symtable_remove_scope_aux a b, c, d, e)
 
-symtable_remove_aux :: (Token,Token) -> SymTableErrada -> SymTableErrada
-symtable_remove_aux _ [] = fail "variable not found"
-symtable_remove_aux (id1, v1) ((id2, v2):t) = 
-                               if id1 == id2 then t
-                               else (id2, v2) : symtable_remove_aux (id1, v1) t   
+symtable_remove_scope_aux :: String -> SymTable -> SymTable
+symtable_remove_scope_aux _ [] = []
+symtable_remove_scope_aux a ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
+                            if(a == scop) then symtable_remove_scope_aux a t
+                            else (Id id2 p2, scop, (depth2, v2):tail) : t
 
-symtable_get :: Token -> CCureState -> Maybe Token
-symtable_get a (b, _, _, _) = symtable_get_aux a b
+-- symtable_remove :: (Token,Token) -> CCureState -> CCureState
+-- symtable_remove a (b, c, d, e) = (symtable_remove_aux a b, c, d, e)
 
-symtable_get_aux :: Token -> SymTableErrada -> Maybe Token
+-- symtable_remove_aux :: (Token,Token) -> SymTable -> SymTable
+-- symtable_remove_aux _ [] = fail "variable not found"
+-- symtable_remove_aux (id1, v1) ((id2, v2):t) = 
+--                                if id1 == id2 then t
+--                                else (id2, v2) : symtable_remove_aux (id1, v1) t   
+
+symtable_get :: (Token, Int) -> CCureState -> Maybe Token
+symtable_get (a, d) (b, _, _, _) = symtable_get_aux (a, d) b
+
+symtable_get_aux :: (Token, Int) -> SymTable -> Maybe Token
 symtable_get_aux _ [] = fail "variable not found"
-symtable_get_aux (Id id1 p1) ((Id id2 p2, v2):t) = 
-                            if (id1 == id2) then Just v2
-                            else symtable_get_aux (Id id1 p1) t
+symtable_get_aux (Id id1 p1, depth1) ((Id id2 p2, scop, (depth2, v2):tail):t   ) = 
+                            if ((id1, depth1) == (id2, depth2)) then Just v2
+                            else symtable_get_aux (Id id1 p1, depth1) t
 
 -- invocação do parser para o símbolo de partida 
 
