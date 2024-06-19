@@ -10,9 +10,12 @@ module Main (main) where
 import Lexer
 import State
 import Tokens
+import Text.Read
 import Text.Parsec
 import Control.Monad.IO.Class
 import System.IO.Unsafe
+import Text.Read.Lex
+import Data.Maybe
 
 -- alias para tipos usados
 type ParsecType = ParsecT [Token] CCureState IO (Token)
@@ -67,7 +70,7 @@ stmts = do
           return (first ++ next)
 
 stmt :: ParsecT [Token] CCureState IO([Token])
-stmt = try varDecl <|> assign <|> printPuts <|> whileStmt <|> breakStmt
+stmt = try varDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> breakStmt
 
 remainingStmts :: ParsecT [Token] CCureState IO([Token])
 remainingStmts = (do
@@ -87,6 +90,49 @@ printPuts = do
                 liftIO (print c)
               else pure()
               return (a:b:c:d:[e])
+
+readStup :: ParsecT [Token] CCureState IO([Token])
+readStup = do 
+              a <- stupToken
+              b <- openParentToken
+              c <- idToken
+              d <- commaToken
+              e <- typeToken
+              f <- closeParentToken
+              g <- semiColonToken
+              s <- getState
+              if(execOn s) then do
+                input <- liftIO(getLine)
+                let strConverted = convertStringToToken input e
+                if(not (compatible (get_type c s) strConverted )) then fail "type error on input"
+                else do
+                  updateState(symtable_update (c, 0 ,strConverted))
+                  return (a:b:c:d:e:f:[g])
+                
+              else return (a:b:c:d:e:f:[g])
+
+convertStringToToken :: String -> Token -> Token
+convertStringToToken x (Double _) =
+      case (readDouble x) of
+            Right num -> (DoubleLit num (0,0))
+            Left err  -> error "could not convert input to double value"
+convertStringToToken x (Int _) =
+      case (readInt x) of
+            Right num -> (IntLit num (0,0))
+            Left err  -> error "could not convert input to int value"
+convertStringToToken x (Bool _) =
+      if (x == "True") then (BoolLit True (0,0))
+      else do
+        if (x == "False") then (BoolLit False (0,0))
+        else error "could not convert input to boolean value"
+
+-- Função para ler e converter uma String em Int
+readInt :: String -> Either String Int
+readInt str = readEither str
+
+-- Função para ler e converter uma String em Double
+readDouble :: String -> Either String Double
+readDouble str = readEither str
 
 whileStmt :: ParsecT [Token] CCureState IO([Token])
 whileStmt = do

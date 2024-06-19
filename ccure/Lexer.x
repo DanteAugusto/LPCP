@@ -69,6 +69,7 @@ tokens :-
 
   cast                            { \p s -> Cast (getLC p) }
   puts                            { \p s -> Puts (getLC p) }
+  stup                            { \p s -> Stup (getLC p) }
 
   $digit+	                            { \p s -> IntLit (read s) (getLC p) }
   $digit+\.$digit+	                  { \p s -> DoubleLit (read s) (getLC p) }
@@ -123,8 +124,10 @@ data Token =
   Int                  (Int, Int)        |
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
+  String               (Int, Int)        |
   Cast                 (Int, Int)        |
   Puts                 (Int, Int)        |
+  Stup                 (Int, Int)        |
   IntLit               Int (Int, Int)    |
   DoubleLit            Double (Int, Int) |
   BoolLit              Bool   (Int, Int) |

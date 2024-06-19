@@ -111,6 +111,11 @@ putsToken = tokenPrim show update_pos get_token where
   get_token (Puts p) = Just (Puts p)
   get_token _         = Nothing
 
+stupToken :: ParsecT [Token] st IO (Token)
+stupToken = tokenPrim show update_pos get_token where
+  get_token (Stup p) = Just (Stup p)
+  get_token _         = Nothing
+
 whileToken :: ParsecT [Token] st IO (Token)
 whileToken = tokenPrim show update_pos get_token where
   get_token (While p) = Just (While p)
