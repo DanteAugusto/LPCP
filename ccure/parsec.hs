@@ -62,7 +62,13 @@ stmts = do
           return (first ++ next)
 
 stmt :: ParsecT [Token] CCureState IO([Token])
-stmt = try varDecl <|> assign <|> printPuts <|> whileStmt
+stmt = try varDecl <|> assign <|> printPuts <|> whileStmt <|> breakStmt
+
+remainingStmts :: ParsecT [Token] CCureState IO([Token])
+remainingStmts = (do
+                  a <- stmt
+                  b <- remainingStmts 
+                  return (a ++ b)) <|> return ([])
 
 printPuts :: ParsecT [Token] CCureState IO([Token])
 printPuts = do 
@@ -95,6 +101,15 @@ whileStmt = do
                     c <- stmts
                     d <- endWhileToken
                     -- liftIO(print pc)
+
+
+                    s <- getState
+                    -- Se apos os stmts o exec tiver off, leu um break ou continue
+                    -- if(not execOn s) then
+                      -- Se foi um break, acaba o loop
+
+                      -- Se foi um continue, continua o loop
+                    -- else do
                     setInput(pc)
                     return (a:b:c ++ [d])
                   else do
@@ -111,11 +126,27 @@ whileStmt = do
                 d <- endWhileToken
                 return (a:b:c ++ [d])
 
-remainingStmts :: ParsecT [Token] CCureState IO([Token])
-remainingStmts = (do
-                  a <- stmt
-                  b <- remainingStmts 
-                  return (a ++ b)) <|> return ([])
+breakStmt :: ParsecT [Token] CCureState IO([Token])
+breakStmt = do
+              a <- breakToken
+              b <- semiColonToken
+
+              s <- getState
+              if(execOn s) then do
+
+                
+                -- Checar se estou dentro de um loop
+                s <- getState
+
+
+                if((getCurrentScope s)== "while") then
+                  updateState(turnExecOff)
+                else
+                  fail "break statement out of loop structure"
+              else pure()
+              
+              return (a:[b])
+
 
 assign :: ParsecT [Token] CCureState IO([Token])
 assign = do
@@ -381,9 +412,9 @@ compatible_varDecl _ _ = False
 -- funções para a tabela de símbolos
 
 get_type :: Token -> CCureState -> Token
-get_type _ ([], _, _) = error "variable not found"
-get_type (Id id1 p1) (((Id id2 _, value):t), a, b) = if id1 == id2 then value
-                                             else get_type (Id id1 p1) (t, a, b)
+get_type _ ([], _, _, _) = error "variable not found"
+get_type (Id id1 p1) (((Id id2 _, value):t), a, b, c) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b, c)
 -- get_type (Id id1 p1) _ = error "o misterio"
 
 get_bool_value :: Token -> Bool
@@ -391,11 +422,11 @@ get_bool_value (BoolLit a _) = a
 get_bool_value _ = error "token is not a boolean"
 
 symtable_insert :: (Token,Token) -> CCureState -> CCureState
-symtable_insert symbol ([], a, b)  = ([symbol], a, b)
-symtable_insert symbol (symtable, a, b) = ((symtable ++ [symbol]), a, b)
+symtable_insert symbol ([], a, b, c)  = ([symbol], a, b, c)
+symtable_insert symbol (symtable, a, b, c) = ((symtable ++ [symbol]), a, b, c)
 
 symtable_update :: (Token,Token) -> CCureState -> CCureState
-symtable_update a (b, c, d) = (symtable_update_aux a b, c, d)
+symtable_update a (b, c, d, e) = (symtable_update_aux a b, c, d, e)
 
 symtable_update_aux :: (Token, Token) -> SymTableErrada -> SymTableErrada
 symtable_update_aux _ [] = fail "variable not found"
@@ -404,7 +435,7 @@ symtable_update_aux (Id id1 p1, v1) ((Id id2 p2, v2):t) =
                                else (Id id2 p2, v2) : symtable_update_aux (Id id1 p1, v1) t
 
 symtable_remove :: (Token,Token) -> CCureState -> CCureState
-symtable_remove a (b, c, d) = (symtable_remove_aux a b, c, d)
+symtable_remove a (b, c, d, e) = (symtable_remove_aux a b, c, d, e)
 
 symtable_remove_aux :: (Token,Token) -> SymTableErrada -> SymTableErrada
 symtable_remove_aux _ [] = fail "variable not found"
@@ -413,7 +444,7 @@ symtable_remove_aux (id1, v1) ((id2, v2):t) =
                                else (id2, v2) : symtable_remove_aux (id1, v1) t   
 
 symtable_get :: Token -> CCureState -> Maybe Token
-symtable_get a (b, _, _) = symtable_get_aux a b
+symtable_get a (b, _, _, _) = symtable_get_aux a b
 
 symtable_get_aux :: Token -> SymTableErrada -> Maybe Token
 symtable_get_aux _ [] = fail "variable not found"
@@ -424,7 +455,7 @@ symtable_get_aux (Id id1 p1) ((Id id2 p2, v2):t) =
 -- invocação do parser para o símbolo de partida 
 
 parser :: [Token] -> IO (Either ParseError [Token])
-parser tokens = runParserT program ([], [], True) "Error message" tokens
+parser tokens = runParserT program ([], [], [], True) "Error message" tokens
 
 main :: IO ()
 main = case unsafePerformIO (parser (getTokens "soma.ccr")) of
