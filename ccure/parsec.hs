@@ -542,7 +542,7 @@ parser :: [Token] -> IO (Either ParseError [Token])
 parser tokens = runParserT program ([], [], [], True) "Error message" tokens
 
 main :: IO ()
-main = case unsafePerformIO (parser (getTokens "soma.ccr")) of
+main = case unsafePerformIO (parser (getTokens "problemas/problema2.ccr")) of
             { Left err -> print err; 
               Right ans -> print ans
             }

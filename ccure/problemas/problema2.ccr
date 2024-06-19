@@ -1,0 +1,36 @@
+program
+	int input = 0; int cont1 = 0; int cont2 = 0; int cont3 = 0; int cont4 = 0;
+
+	bool cond1 = True;
+
+	while(cond1)
+		stup(input, int);
+
+		while(input >= 0 && input <= 25)
+			cont1 = cont1 + 1;
+			break;
+		endWhile
+		while(input >= 26 && input <= 50)
+			cont2 = cont2 + 1;
+			break;
+		endWhile
+		while(input >= 51 && input <= 75)
+			cont3 = cont3 + 1;
+			break;
+		endWhile
+		while(input >= 76 && input <= 100)
+			cont4 = cont4 + 1;
+			break;
+		endWhile
+
+		while(input < 0)
+			cond1 = False;
+			break;
+		endWhile
+	endWhile
+
+	puts(cont1);
+	puts(cont2);
+	puts(cont3);
+	puts(cont4);
+end
