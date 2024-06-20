@@ -40,6 +40,44 @@ program = do
 typeToken :: ParsecT [Token] CCureState IO(Token)
 typeToken = try intToken <|> doubleToken <|> boolToken
 
+numericalTypeToken :: ParsecT [Token] CCureState IO(Token)
+numericalTypeToken = try intToken <|> doubleToken
+
+
+matrixDecl :: ParsecT [Token] CCureState IO([Token])
+matrixDecl = do
+              -- matrix<linha, coluna, tipo(int ou double)> m = 0;
+              mat <- matrixToken
+
+              l <- lessToken
+              lin <- intLitToken
+              a <- commaToken
+
+              col <- intLitToken
+              b <- commaToken
+
+              typ <- numericalTypeToken
+              r <- greatToken
+              
+              id <- idToken
+              assig <- assignToken
+              defaultVal <- numericalTypeToken
+
+              sc <- semiColonToken 
+
+              s <- getState
+              
+              if(execOn s) then do
+                -- aq tem q checar se o tipo é valido, ou seja:
+                -- se lin e col sao > 0
+                -- se defaultVal é compatível com typ 
+
+                -- se tiver tudo ok, construir a matriz e colocar na tabela de simbolos
+                return []
+              else
+                return (mat:l:lin:a:col:b:typ:r:id:assig:defaultVal:[sc])
+
+
 varDecl :: ParsecT [Token] CCureState IO([Token])
 varDecl = do
             a <- typeToken
