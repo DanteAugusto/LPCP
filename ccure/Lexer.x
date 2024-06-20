@@ -42,6 +42,8 @@ tokens :-
 
   ";"                             { \p s -> Semicolon (getLC p) }
   "->"                            { \p s -> Arrow (getLC p) }
+  "<+>"                           { \p s -> PlusMatrix (getLC p) }
+  "<*>"                           { \p s -> MultMatrix (getLC p) } 
   "+"                             { \p s -> Plus (getLC p) }
   "-"                             { \p s -> Minus (getLC p) }
   "*"                             { \p s -> Mult (getLC p) }
@@ -60,12 +62,15 @@ tokens :-
   "="                             { \p s -> Assign (getLC p) }
   "("                             { \p s -> OpenParent (getLC p) }
   ")"                             { \p s -> CloseParent (getLC p) }
+  "["                             { \p s -> OpenBrack (getLC p) }
+  "]"                             { \p s -> CloseBrack (getLC p) }
   ","                             { \p s -> Comma (getLC p) }
 
   int                             { \p s -> Int (getLC p) }
   double                          { \p s -> Double (getLC p) }
   -- float                           { \p s -> Float (getLC p) }
   bool                            { \p s -> Bool (getLC p) }
+  matrix                          { \p s -> Matrix (getLC p) }
 
   cast                            { \p s -> Cast (getLC p) }
   puts                            { \p s -> Puts (getLC p) }
@@ -102,6 +107,8 @@ data Token =
   Break                (Int, Int)        |
   Semicolon            (Int, Int)        |
   Arrow                (Int, Int)        |
+  PlusMatrix           (Int, Int)        |
+  MultMatrix           (Int, Int)        |
   Plus                 (Int, Int)        |
   Mult                 (Int, Int)        |
   Divi                 (Int, Int)        |
@@ -120,8 +127,11 @@ data Token =
   Assign               (Int, Int)        |
   OpenParent           (Int, Int)        |
   CloseParent          (Int, Int)        |
+  OpenBrack            (Int, Int)        |
+  CloseBrack           (Int, Int)        |
   Comma                (Int, Int)        |
   Int                  (Int, Int)        |
+  Matrix               (Int, Int)        |
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
   String               (Int, Int)        |

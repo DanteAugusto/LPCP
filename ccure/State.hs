@@ -4,10 +4,23 @@ import Lexer
 import Text.Parsec
 
 data LoopStatus = OK | BREAK | CONTINUE deriving (Eq, Show)
+
+data Type =
+    NULL |
+    DoubleType Double |
+    IntType Int |
+    BoolType Bool |
+    StringType String |
+    StructType (String, [(String, Type)]) | 
+    PointerType (Type, (String, String)) |
+    ArrayType (Int, [Type]) |
+    MatrixInt (Int, Int, [[Int]]) |
+    MatrixDouble (Int, Int, [[Double]])
+    deriving (Eq, Show)
+
 type ExAct = Bool
 -- Nome, profundidade de chamada, valor e escopo
-type SymTable = [(Token, String, [(Int, Token)])]
-
+type SymTable = [(Token, String, [(Int, Type)])]
 
 -- type ExecStack = [[]] pilha de instancias de ra (linha pra onde devo voltar e valor de retorno)
 -- type ActRegSubprog = [(String, [String])]

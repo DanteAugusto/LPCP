@@ -46,6 +46,21 @@ registerToken = tokenPrim show update_pos get_token where
   get_token (Register p) = Just (Register p)
   get_token _           = Nothing
 
+matrixToken :: ParsecT [Token] st IO (Token)
+matrixToken = tokenPrim show update_pos get_token where
+  get_token (Matrix p) = Just (Matrix p)
+  get_token _           = Nothing
+
+plusMatrixToken :: ParsecT [Token] st IO (Token)
+plusMatrixToken = tokenPrim show update_pos get_token where
+  get_token (PlusMatrix p) = Just (PlusMatrix p)
+  get_token _           = Nothing 
+
+multMatrixToken :: ParsecT [Token] st IO (Token)
+multMatrixToken = tokenPrim show update_pos get_token where
+  get_token (MultMatrix p) = Just (MultMatrix p)
+  get_token _           = Nothing
+
 endRegisterToken :: ParsecT [Token] st IO (Token)
 endRegisterToken = tokenPrim show update_pos get_token where
   get_token (EndRegister p) = Just (EndRegister p)
