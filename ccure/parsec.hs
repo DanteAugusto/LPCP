@@ -43,6 +43,51 @@ typeToken = try intToken <|> doubleToken <|> boolToken
 
 numericalTypeToken :: ParsecT [Token] CCureState IO(Token)
 numericalTypeToken = try intToken <|> doubleToken
+                      
+matrixSizeParser :: ParsecT [Token] CCureState IO(Type, [Token])
+matrixSizeParser = try (do 
+                          val <- intLitToken
+                          return (tokenToType val, [val]))
+                        <|> variableParser
+
+matrixExpr :: ParsecT [Token] CCureState IO(Type, [Token])
+matrixExpr = (do
+              a <- expiMatrix
+              result <- eval_remaining_matrix a matrixOpToken expiMatrix
+              return result
+            )
+
+enclosedMatrixExp :: ParsecT [Token] CCureState IO(Type, [Token])      
+enclosedMatrixExp = do
+                a <- openParentToken
+                b <- matrixExpr
+                c <- closeParentToken
+                return b 
+
+expiMatrix :: ParsecT [Token] CCureState IO(Type, [Token])
+expiMatrix = try (do 
+                    x <- intLitToken <|> doubleLitToken
+                    return (tokenToType x, [x])
+                  ) <|> variableParser <|> enclosedMatrixExp
+
+matrixOpToken :: ParsecT [Token] CCureState IO(Token)
+matrixOpToken = try multMatrixToken <|> plusMatrixToken <|> plusToken <|> multToken
+
+eval_remaining_matrix :: (Type, [Token]) -> ParsecTokenType -> ParsecType -> ParsecT [Token] CCureState IO(Type, [Token])
+eval_remaining_matrix m1 operator remain = (do
+                                op <- operator
+                                m2 <- remain
+                                s <- getState
+                                if (execOn s) then do
+                                  if (not (compatible_op m1 op m2)) then fail "type error on evaluating expression"
+                                  else
+                                    do
+                                      result <- eval_remaining_matrix (eval m1 op m2 (execOn s)) operator remain
+                                      return (result)
+                                else do
+                                  result <- eval_remaining_matrix (eval m1 op m2 (execOn s)) operator remain
+                                  return (result))
+                              <|> return m1
 
 matrixDecl :: ParsecT [Token] CCureState IO([Token])
 matrixDecl = do
@@ -50,10 +95,10 @@ matrixDecl = do
               mat <- matrixToken
 
               l <- lessToken
-              lin <- intLitToken -- tem q fazer poder ser uma variavel
+              lin <- matrixSizeParser 
               a <- commaToken
 
-              col <- intLitToken -- aq tbm
+              col <- matrixSizeParser
               b <- commaToken
 
               typ <- numericalTypeToken
@@ -61,31 +106,32 @@ matrixDecl = do
               
               id <- idToken
               assig <- assignToken
-              defaultVal <- intLitToken <|> doubleLitToken -- possiveis valores: literais double e int, ids e expressoes de matrizes
-
+              
+              initVal <- matrixExpr <|> (do 
+                                          x <- intLitToken <|> doubleLitToken
+                                          return (tokenToType x, [x])) 
               sc <- semiColonToken 
 
               s <- getState
               
               if(execOn s) then do
                 -- aq tem q checar se o tipo é valido, ou seja:
-                -- se lin e col sao > 0
-                if(not $ validDimensions lin col) then fail "Invalid Dimensions given for matrix"
+                -- se lin e col sao inteiros > 0
+                if(not $ validDimensions (fst lin) (fst col)) then fail "Invalid Dimensions given for matrix"
                 else 
-                  -- se defaultVal é compatível com typ 
-                  if(not $ compatible_varDecl typ (tokenToType defaultVal, [])) then fail "Invalid default value for matrix"
+                  -- se initVal é compatível com a matriz
+                  if(not $ compatible_matrix_assign typ initVal (fst lin) (fst col)) then fail "Invalid value assigned to matrix"
                   else
                   -- se tiver tudo ok, construir a matriz e colocar na tabela de simbolos
                     do
                       s <- getState
-                      let matrixToSave = makeMatrixType lin col defaultVal
+                      let matrixToSave = makeMatrixType (fst lin) (fst col) (fst initVal)
                       updateState(symtable_insert (id, getCurrentScope s, [(0, matrixToSave)]))
                       s <- getState
-                      liftIO (print s)
-                      return  (mat:l:lin:a:col:b:typ:r:id:assig:defaultVal:[sc])
+                      liftIO (print matrixToSave)
+                      return  (mat:[l] ++ (snd lin) ++ [a] ++ (snd col) ++ b:typ:r:id:[assig] ++ (snd initVal) ++[sc])
               else
-                return (mat:l:lin:a:col:b:typ:r:id:assig:defaultVal:[sc])
-
+                return (mat:[l] ++ (snd lin) ++ [a] ++ (snd col) ++ b:typ:r:id:[assig] ++ (snd initVal) ++[sc])
 
 varDecl :: ParsecT [Token] CCureState IO([Token])
 varDecl = do
@@ -494,6 +540,37 @@ eval (BoolType x, a) (Or op) (BoolType y, b) True = (BoolType (x || y), a ++ [(O
 eval (BoolType x, a) (Eq op) (BoolType y, b) True = (BoolType (x == y), a ++ [(Eq op)] ++ b)
 eval (BoolType x, a) (Diff op) (BoolType y, b) True = (BoolType (x /= y), a ++ [(Diff op)] ++ b)
 
+eval (MatrixInt (l1, c1, m1), a) (PlusMatrix op) (MatrixInt (l2, c2, m2), b) True 
+  = (MatrixInt (l1, c1, sumMatrix m1 m2), a ++ [(PlusMatrix op)] ++ b)
+eval (MatrixDouble (l1, c1, m1), a) (PlusMatrix op) (MatrixDouble (l2, c2, m2), b) True 
+  = (MatrixDouble (l1, c1, sumMatrix m1 m2), a ++ [(PlusMatrix op)] ++ b)
+
+eval (MatrixInt (l1, c1, m1), a) (MultMatrix op) (MatrixInt (l2, c2, m2), b) True 
+  = (MatrixInt (l1, c2, mulMatrix m1 m2), a ++ [(MultMatrix op)] ++ b)
+eval (MatrixDouble (l1, c1, m1), a) (MultMatrix op) (MatrixDouble (l2, c2, m2), b) True 
+  = (MatrixDouble (l1, c2, mulMatrix m1 m2), a ++ [(MultMatrix op)] ++ b)  
+
+eval (IntType s, a) (Mult op) (MatrixInt (l, c, m), b) True 
+  = (MatrixInt (l, c, scalarMul s m), a ++ [(Mult op)] ++ b)
+eval (DoubleType s, a) (Mult op) (MatrixDouble (l, c, m), b) True 
+  = (MatrixDouble (l, c, scalarMul s m), a ++ [(Mult op)] ++ b)
+
+eval (IntType s, a) (Plus op) (MatrixInt (l, c, m), b) True 
+  = (MatrixInt (l, c, scalarSum s m), a ++ [(Plus op)] ++ b)
+eval (DoubleType s, a) (Plus op) (MatrixDouble (l, c, m), b) True 
+  = (MatrixDouble (l, c, scalarMul s m), a ++ [(Plus op)] ++ b)
+
+eval (MatrixInt (l, c, m), a) (Mult op) (IntType s, b) True 
+  = (MatrixInt (l, c, scalarMul s m), a ++ [(Mult op)] ++ b)
+eval (MatrixDouble (l, c, m), a) (Mult op) (DoubleType s, b) True 
+  = (MatrixDouble (l, c, scalarMul s m), a ++ [(Mult op)] ++ b)
+
+eval (MatrixInt (l, c, m), a) (Plus op) (IntType s, b) True 
+  = (MatrixInt (l, c, scalarSum s m), a ++ [(Plus op)] ++ b)
+eval (MatrixDouble (l, c, m), a) (Plus op) (DoubleType s, b) True 
+  = (MatrixDouble (l, c, scalarMul s m), a ++ [(Plus op)] ++ b)
+
+
 compatible_op :: (Type, [Token]) -> Token -> (Type, [Token]) -> Bool
 compatible_op (IntType _, _) (Plus _ ) (IntType _, _) = True
 compatible_op (IntType _, _) (Minus _ ) (IntType _, _) = True
@@ -525,6 +602,24 @@ compatible_op (BoolType _, _) (Or _ ) (BoolType _, _) = True
 compatible_op (BoolType _, _) (Eq _ ) (BoolType _, _) = True
 compatible_op (BoolType _, _) (Diff _ ) (BoolType _, _) = True
 
+compatible_op (MatrixInt (l1, c1, _), _) (PlusMatrix _) (MatrixInt (l2, c2, _), _) = l1 == l2 && c1 == c2
+compatible_op (MatrixInt (l1, c1, _), _) (MultMatrix _) (MatrixInt (l2, c2, _), _) = c1 == l1
+
+compatible_op (MatrixDouble (l1, c1, _), _) (PlusMatrix _) (MatrixDouble (l2, c2, _), _) = l1 == l2 && c1 == c2
+compatible_op (MatrixDouble (l1, c1, _), _) (MultMatrix _) (MatrixDouble (l2, c2, _), _) = c1 == l1
+
+compatible_op (IntType _, _) (Mult _) (MatrixInt _, _) = True
+compatible_op (MatrixInt _, _) (Mult _) (IntType _, _) = True
+
+compatible_op (DoubleType _, _) (Mult _) (MatrixDouble _, _) = True
+compatible_op (MatrixDouble _, _) (Mult _) (DoubleType _, _) = True
+
+compatible_op (IntType _, _) (Plus _) (MatrixInt _, _) = True
+compatible_op (MatrixInt _, _) (Plus _) (IntType _, _) = True
+
+compatible_op (DoubleType _, _) (Plus _) (MatrixDouble _, _) = True
+compatible_op (MatrixDouble _, _) (Plus _) (DoubleType _, _) = True
+
 compatible_op _ _ _ = False
 
 compatible :: (Type, [Token]) -> (Type, [Token]) -> Bool
@@ -538,6 +633,15 @@ compatible_varDecl (Int _) (IntType _, _) = True
 compatible_varDecl (Double _) (DoubleType _, _) = True
 compatible_varDecl (Bool _) (BoolType _, _) = True
 compatible_varDecl _ _ = False
+
+compatible_matrix_assign :: Token -> (Type, [Token]) -> Type -> Type -> Bool
+compatible_matrix_assign (Int _) (IntType _, _) _ _ = True
+compatible_matrix_assign (Double _) (DoubleType _, _) _ _= True
+
+compatible_matrix_assign (Int _) (MatrixInt (l1, c1, _), _) (IntType l2) (IntType c2) = l1 == l2 && c1 == c2 
+compatible_matrix_assign (Double _) (MatrixDouble (l1, c1, _), _) (IntType l2) (IntType c2) = l1 == l2 && c1 == c2 
+
+compatible_matrix_assign _ _ _ _ = False
 
 -- funções para a tabela de símbolos
 

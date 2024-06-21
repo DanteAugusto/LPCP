@@ -1,3 +1,13 @@
 program
-    matrix<3, 4, double> m = 3;
+    int l = 3;
+    int c = 3;
+
+    -- stup(l, int);
+    -- stup(c, int);
+    
+    matrix<l, c, double> m1 = 5.3;
+    matrix<l, c, double> m2 = 0.25;
+
+    matrix<l, c, double> m3 = (4.0 * m2) <*> m2;
+    matrix<l, c, double> m4 = m1 <+> m2;
 end
