@@ -10,6 +10,7 @@ module Main (main) where
 import Lexer
 import State
 import Tokens
+import MatrixUtils
 import Text.Read
 import Text.Parsec
 import Control.Monad.IO.Class
@@ -43,17 +44,16 @@ typeToken = try intToken <|> doubleToken <|> boolToken
 numericalTypeToken :: ParsecT [Token] CCureState IO(Token)
 numericalTypeToken = try intToken <|> doubleToken
 
-
 matrixDecl :: ParsecT [Token] CCureState IO([Token])
 matrixDecl = do
               -- matrix<linha, coluna, tipo(int ou double)> m = 0;
               mat <- matrixToken
 
               l <- lessToken
-              lin <- intLitToken
+              lin <- intLitToken -- tem q fazer poder ser uma variavel
               a <- commaToken
 
-              col <- intLitToken
+              col <- intLitToken -- aq tbm
               b <- commaToken
 
               typ <- numericalTypeToken
@@ -61,7 +61,7 @@ matrixDecl = do
               
               id <- idToken
               assig <- assignToken
-              defaultVal <- numericalTypeToken
+              defaultVal <- intLitToken <|> doubleLitToken -- possiveis valores: literais double e int, ids e expressoes de matrizes
 
               sc <- semiColonToken 
 
@@ -70,10 +70,19 @@ matrixDecl = do
               if(execOn s) then do
                 -- aq tem q checar se o tipo é valido, ou seja:
                 -- se lin e col sao > 0
-                -- se defaultVal é compatível com typ 
-
-                -- se tiver tudo ok, construir a matriz e colocar na tabela de simbolos
-                return []
+                if(not $ validDimensions lin col) then fail "Invalid Dimensions given for matrix"
+                else 
+                  -- se defaultVal é compatível com typ 
+                  if(not $ compatible_varDecl typ (tokenToType defaultVal, [])) then fail "Invalid default value for matrix"
+                  else
+                  -- se tiver tudo ok, construir a matriz e colocar na tabela de simbolos
+                    do
+                      s <- getState
+                      let matrixToSave = makeMatrixType lin col defaultVal
+                      updateState(symtable_insert (id, getCurrentScope s, [(0, matrixToSave)]))
+                      s <- getState
+                      liftIO (print s)
+                      return  (mat:l:lin:a:col:b:typ:r:id:assig:defaultVal:[sc])
               else
                 return (mat:l:lin:a:col:b:typ:r:id:assig:defaultVal:[sc])
 
@@ -109,7 +118,7 @@ stmts = do
           return (first ++ next)
 
 stmt :: ParsecT [Token] CCureState IO([Token])
-stmt = try varDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> breakStmt
+stmt = try varDecl <|> matrixDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> breakStmt
 
 remainingStmts :: ParsecT [Token] CCureState IO([Token])
 remainingStmts = (do
@@ -589,7 +598,7 @@ parser :: [Token] -> IO (Either ParseError [Token])
 parser tokens = runParserT program ([], [], [], True) "Error message" tokens
 
 main :: IO ()
-main = case unsafePerformIO (parser (getTokens "problemas/problema2.ccr")) of
+main = case unsafePerformIO (parser (getTokens "problemas/problema3.ccr")) of
             { Left err -> print err; 
               Right ans -> print ans
             }
