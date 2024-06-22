@@ -126,11 +126,6 @@ registerAccess id = do
                       a <- arrowToken
                       b <- idToken
                       s <- getState
-                      -- x   <- matrixSizeParser
-                      -- cb1 <- closeBrackToken
-                      -- ob2 <- openBrackToken
-                      -- y   <- matrixSizeParser
-                      -- cb2 <- closeBrackToken
 
                       s <- getState
                       if(execOn s) then do
@@ -176,11 +171,11 @@ typeToken :: ParsecT [Token] CCureState IO(Token)
 typeToken = try intToken <|> doubleToken <|> boolToken <|> stringToken
 
 
-matrixSizeParser :: ParsecT [Token] CCureState IO(Type, [Token])
-matrixSizeParser = try (do
-                          val <- intLitToken
-                          return (tokenToType val, [val]))
-                        <|> variableParser
+-- matrixSizeParser :: ParsecT [Token] CCureState IO(Type, [Token])
+-- matrixSizeParser = try (do
+--                           val <- intLitToken
+--                           return (tokenToType val, [val]))
+--                         <|> variableParser
 
 matrixExpr :: ParsecT [Token] CCureState IO(Type, [Token])
 matrixExpr = (do
@@ -208,10 +203,10 @@ matrixOpToken = try multMatrixToken <|> plusMatrixToken <|> plusToken <|> multTo
 matrixAcces :: Token -> ParsecT [Token] CCureState IO(Type, [Token])
 matrixAcces id = do
                 ob1 <- openBrackToken
-                x   <- matrixSizeParser
+                x   <- expression
                 cb1 <- closeBrackToken
                 ob2 <- openBrackToken
-                y   <- matrixSizeParser
+                y   <- expression
                 cb2 <- closeBrackToken
 
                 s <- getState
@@ -248,10 +243,10 @@ matrixDecl = do
               mat <- matrixToken
 
               l <- lessToken
-              lin <- matrixSizeParser
+              lin <- expression
               a <- commaToken
 
-              col <- matrixSizeParser
+              col <- expression
               b <- commaToken
 
               typ <- intToken <|> doubleToken
@@ -381,10 +376,10 @@ printPuts = do
 matrixStup :: Token -> ParsecT [Token] CCureState IO([Token])
 matrixStup id = do
                   ob1 <- openBrackToken
-                  (xt, xx)   <- matrixSizeParser
+                  (xt, xx)   <- expression
                   cb1 <- closeBrackToken
                   ob2 <- openBrackToken
-                  (yt, yy)   <- matrixSizeParser
+                  (yt, yy)   <- expression
                   cb2 <- closeBrackToken
 
                   d <- commaToken
@@ -1002,7 +997,7 @@ parser :: [Token] -> IO (Either ParseError [Token])
 parser tokens = runParserT program ([], [], [], 0, [], True) "Error message" tokens
 
 main :: IO ()
-main = case unsafePerformIO (parser (getTokens "problemas/problema4.ccr")) of
+main = case unsafePerformIO (parser (getTokens "problemas/problema3.ccr")) of
             { Left err -> print err;
               Right ans -> print "Program ended successfully!"
             }
