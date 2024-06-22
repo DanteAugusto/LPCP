@@ -13,6 +13,7 @@ program
     while(i < l1)
         int j = 0;
         while(j < c1)
+            -- puts( cast(i, string) + " " + cast(j, string) + ": "); 
             puts(i);
             puts(" ");
             puts(j);

@@ -83,7 +83,8 @@ matrixAcces id = do
 
                 s <- getState
                 if(execOn s) then do
-                  let matrix = getMayb (symtable_get (id, 0) s)
+                  let currDepth = getCurrentDepth s
+                  let matrix = getMayb (symtable_get (id, currDepth) s)
                   if not $ validAccess (fst x) (fst y) then fail "Negative indexes, access is not allowed" 
                   else
                     if(not $ canAccesMatrix (fst x) (fst y) matrix) then fail "Invalid indexes on trying to access matrix"
@@ -144,8 +145,9 @@ matrixDecl = do
                   -- se tiver tudo ok, construir a matriz e colocar na tabela de simbolos
                     do
                       s <- getState
+                      let currDepth = getCurrentDepth s
                       let matrixToSave = makeMatrixType (fst lin) (fst col) (fst initVal)
-                      updateState(symtable_insert (id, getCurrentScope s, [(0, matrixToSave)]))
+                      updateState(symtable_insert (id, getCurrentScope s, [(currDepth, matrixToSave)]))
                       -- liftIO (print matrixToSave)
                       return  (mat:[l] ++ (snd lin) ++ [a] ++ (snd col) ++ b:typ:r:id:[assig] ++ (snd initVal) ++[sc])
               else
@@ -169,7 +171,8 @@ varDecl = do
               else 
                 do
                   s <- getState
-                  updateState(symtable_insert (b, getCurrentScope s, [(0, fst d)]))
+                  let currentDepth =  getCurrentDepth s
+                  updateState(symtable_insert (b, getCurrentScope s, [(currentDepth, fst d)]))
                   s <- getState
                   -- liftIO (print s)
                   return (a:b:[c] ++ (snd d) ++ [e])
@@ -227,14 +230,15 @@ matrixStup id = do
                   if(execOn s) then do
                     input <- liftIO(getLine)
                     let strConverted = convertStringToType input e
-                    let matrix = getMayb (symtable_get (id, 0) s)
+                    let currentDepth = getCurrentDepth s
+                    let matrix = getMayb (symtable_get (id, currentDepth) s)
                     if not $ validAccess xt yt then fail "Negative indexes, access is not allowed" 
                     else
                       if(not $ canAccesMatrix xt yt matrix) then fail "Invalid indexes on trying to access matrix"
                       else   
                         if(not (compatible_matrix (get_type id s, []) (strConverted, []) )) then fail "type error on input"
                         else do 
-                          updateState(symtable_update_matrix (id, 0, getValFromType xt, getValFromType yt, strConverted))
+                          updateState(symtable_update_matrix (id, currentDepth, getValFromType xt, getValFromType yt, strConverted))
                           return (id:[ob1] ++ xx ++ cb1:[ob2] ++ yy ++ [cb2])
                   else 
                     return (id:[ob1] ++ xx ++ cb1:[ob2] ++ yy ++ [cb2])
@@ -261,7 +265,7 @@ readStup = do
                           let strConverted = convertStringToType input e
                           if(not (compatible (get_type c s, []) (strConverted, []) )) then fail "type error on input"
                           else do
-                            updateState(symtable_update (c, 0 ,strConverted))
+                            updateState(symtable_update (c, getCurrentDepth s ,strConverted))
                             return (a:b:c:d:e:f:[g])
                           
                         else return (a:b:c:d:e:f:[g])
@@ -391,7 +395,7 @@ assign = do
             if (not (compatible (get_type a s, []) c)) then fail "type error on assign"
             else 
               do 
-                updateState(symtable_update (a, 0, fst c))
+                updateState(symtable_update (a, getCurrentDepth s, fst c))
                 -- s <- getState
                 -- liftIO (print s)
                 return (a:[b] ++ (snd c) ++ [d])
@@ -527,7 +531,7 @@ variableParser = do
                     (do
                       s <- getState
                       if(execOn s) then
-                        return (getMayb (symtable_get (id, 0) s), [id])
+                        return (getMayb (symtable_get (id, getCurrentDepth s) s), [id])
                       else
                         return (NULL, [id]))
                   
@@ -721,27 +725,27 @@ compatible_matrix_assign _ _ _ _ = False
 -- funções para a tabela de símbolos
 
 get_type :: Token -> CCureState -> Type
-get_type _ ([], _, _, _) = error "variable not found"
-get_type (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c) = if id1 == id2 then value
-                                             else get_type (Id id1 p1) (t, a, b, c)
+get_type _ ([], _, _, _, _) = error "variable not found"
+get_type (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b, c, d)
 -- get_type (Id id1 p1) _ = error "o misterio"
 
 get_type_matrix :: Token -> CCureState -> Type
 
-get_type_matrix _ ([], _, _, _) = error "variable not found"
-get_type_matrix (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c) = if id1 == id2 then value
-                                             else get_type (Id id1 p1) (t, a, b, c)
+get_type_matrix _ ([], _, _, _, _) = error "variable not found"
+get_type_matrix (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b, c, d)
 
 get_bool_value :: Type -> Bool
 get_bool_value (BoolType a) = a
 get_bool_value _ = error "token is not a boolean"
 
 symtable_insert :: (Token, String, [(Int, Type)]) -> CCureState -> CCureState
-symtable_insert symbol ([], a, b, c)  = ([symbol], a, b, c)
-symtable_insert symbol (symtable, a, b, c) = ((symbol:symtable), a, b, c)
+symtable_insert symbol ([], a, b, c, d)  = ([symbol], a, b, c, d)
+symtable_insert symbol (symtable, a, b, c, d) = ((symbol:symtable), a, b, c, d)
 
 symtable_update_matrix :: (Token, Int, Int, Int, Type) -> CCureState -> CCureState
-symtable_update_matrix a (b, c, d, e) = (symtable_update_matrix_aux a b, c, d, e)  
+symtable_update_matrix a (b, c, d, e, f) = (symtable_update_matrix_aux a b, c, d, e, f)  
 
 symtable_update_matrix_aux :: (Token, Int, Int, Int, Type) -> SymTable -> SymTable
 symtable_update_matrix_aux _ [] = error "variable not found"
@@ -757,7 +761,7 @@ symtable_update_matrix_aux _ _ = error "batata"
 
 
 symtable_update :: (Token, Int, Type) -> CCureState -> CCureState
-symtable_update a (b, c, d, e) = (symtable_update_aux a b, c, d, e)
+symtable_update a (b, c, d, e, f) = (symtable_update_aux a b, c, d, e, f)
 
 symtable_update_aux :: (Token, Int, Type) -> SymTable -> SymTable
 symtable_update_aux _ [] = fail "variable not found"
@@ -767,7 +771,7 @@ symtable_update_aux (Id id1 p1, depth1, v1) ((Id id2 p2, scop, (depth2, v2):tail
 
 -- Percorre a lista enquanto String for igual a escopo. Depois para
 symtable_remove_scope :: String -> CCureState -> CCureState
-symtable_remove_scope a (b, c, d, e) = (symtable_remove_scope_aux a b, c, d, e)
+symtable_remove_scope a (b, c, d, e, f) = (symtable_remove_scope_aux a b, c, d, e, f)
 
 symtable_remove_scope_aux :: String -> SymTable -> SymTable
 symtable_remove_scope_aux _ [] = []
@@ -785,7 +789,7 @@ symtable_remove_scope_aux a ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
 --                                else (id2, v2) : symtable_remove_aux (id1, v1) t   
 
 symtable_get :: (Token, Int) -> CCureState -> Maybe Type
-symtable_get (a, d) (b, _, _, _) = symtable_get_aux (a, d) b
+symtable_get (a, d) (b, _, _, _, _) = symtable_get_aux (a, d) b
 
 symtable_get_aux :: (Token, Int) -> SymTable -> Maybe Type
 symtable_get_aux _ [] = error "variable not found"
@@ -796,10 +800,10 @@ symtable_get_aux (Id id1 p1, depth1) ((Id id2 p2, scop, (depth2, v2):tail):t   )
 -- invocação do parser para o símbolo de partida 
 
 parser :: [Token] -> IO (Either ParseError [Token])
-parser tokens = runParserT program ([], [], [], True) "Error message" tokens
+parser tokens = runParserT program ([], [], [], 0, True) "Error message" tokens
 
 main :: IO ()
-main = case unsafePerformIO (parser (getTokens "problemas/problema3.ccr")) of
+main = case unsafePerformIO (parser (getTokens "problemas/problema1.ccr")) of
             { Left err -> print err; 
               Right ans -> print "Program ended successfully!"
             }

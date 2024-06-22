@@ -3,6 +3,8 @@ program
 
 	bool cond1 = True;
 
+	puts("Entre com números inteiros. A execução terminará quando um número negativo for lido. \n");
+
 	while(cond1)
 		stup(input, int);
 
@@ -29,8 +31,19 @@ program
 		endWhile
 	endWhile
 
+	puts("Números no intervalo [0, 25]: ");
 	puts(cont1);
+	puts("\n");
+
+	puts("Números no intervalo [26, 50]: ");
 	puts(cont2);
+	puts("\n");
+
+	puts("Números no intervalo [51, 75]: ");
 	puts(cont3);
+	puts("\n");
+
+	puts("Números no intervalo [76, 100]: ");
 	puts(cont4);
+	puts("\n");
 end

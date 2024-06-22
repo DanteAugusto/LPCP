@@ -2,5 +2,14 @@ program
 	double x = 2.5;
     double y = 3.0/5.0;
 	int c = 3;
+
+	puts(x);
+	puts("^2.0 - ");
+	puts(y);
+	puts(" + ");
+	puts(c);
+	puts(" = ");
+
 	puts(x**2.0 - y + cast(c, double));
+	puts("\n");
 end

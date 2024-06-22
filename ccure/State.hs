@@ -33,6 +33,7 @@ instance Show Type where
     show (NULL) = "Isso nao significa nada"
 
 type ExAct = Bool
+type DynamicDepth = Int
 -- Nome, profundidade de chamada, valor e escopo
 type SymTable = [(Token, String, [(Int, Type)])]
 
@@ -41,42 +42,42 @@ type SymTable = [(Token, String, [(Int, Type)])]
 type ScopeStack = [String]
 type LoopStack = [LoopStatus]
 
-type CCureState = (SymTable, ScopeStack, LoopStack, ExAct)
+type CCureState = (SymTable, ScopeStack, LoopStack, DynamicDepth, ExAct)
 
 -- funções auxiliares para o CCureState
 
 addToLoopStack :: LoopStatus -> CCureState -> CCureState
-addToLoopStack newLoopStatus (a, b,stack, c)  = (a, b, newLoopStatus:stack, c)
+addToLoopStack newLoopStatus (a, b,stack, c, d)  = (a, b, newLoopStatus:stack, c, d)
 
 -- removeFromLoopStack :: CCureState -> CCureState
 -- removeFromLoopStack (_, _, [], _) = error "trying to remove unexistent Loop"
 -- removeFromLoopStack (a, b, stack:tail, c) = (a, b, tail, c)
 
 removeFromLoopStack :: CCureState -> CCureState
-removeFromLoopStack (_, _, [], _) = error "trying to remove unexistent Loop"
-removeFromLoopStack (a, b, stack:tail, c) = (a, b, tail, c)
+removeFromLoopStack (_, _, [], _, _) = error "trying to remove unexistent Loop"
+removeFromLoopStack (a, b, stack:tail, c , d) = (a, b, tail, c, d)
 
 getCurrentLoopStatus :: CCureState -> LoopStatus
-getCurrentLoopStatus (_, _, top:tail, _) = top
+getCurrentLoopStatus (_, _, top:tail, _, _) = top
 getCurrentLoopStatus _ = error "trying to access unexistent LoopStatus"
 
 
 
 addToScopeStack :: String -> CCureState -> CCureState
 -- addToScopeStack newScope (a, stack, b, c) = (a, newScope:stack, b, c)
-addToScopeStack newScope (a, top:tail, b, c)  = (a, (newScope ++ ['#'] ++ top):top:tail, b, c)
-addToScopeStack newScope (a, [], b, c)  = (a, [newScope], b, c)
+addToScopeStack newScope (a, top:tail, b, c, d)  = (a, (newScope ++ ['#'] ++ top):top:tail, b, c, d)
+addToScopeStack newScope (a, [], b, c, d)  = (a, [newScope], b, c, d)
 
 getCurrentScope :: CCureState -> String
-getCurrentScope (_, top:tail, _, _) = top
+getCurrentScope (_, top:tail, _, _, _) = top
 getCurrentScope _ = error "trying to access unexistent scope"
 
 getTopScope :: CCureState -> String
 getTopScope a = takeWhile (/= '#') (getCurrentScope a)
 
 removeFromScopeStack :: CCureState -> CCureState
-removeFromScopeStack (_, [], _, _) = error "trying to remove unexistent scope"
-removeFromScopeStack (a, stack:tail, b, c) = (a, tail, b, c)
+removeFromScopeStack (_, [], _, _, _) = error "trying to remove unexistent scope"
+removeFromScopeStack (a, stack:tail, b, c, d) = (a, tail, b, c, d)
 
 -- getCurrentScope :: CCureState -> String
 -- getCurrentScope (_, [top]:tail, _) = getCurrentScopeAux(top)
@@ -86,12 +87,23 @@ removeFromScopeStack (a, stack:tail, b, c) = (a, tail, b, c)
 -- getCurrentScopeAux '#':tail = ""
 -- getCurrentScopeAux top:tail = top : getCurrentScopeAux tail
 
+getCurrentDepth :: CCureState -> Int
+getCurrentDepth (_, _, _, a, _) = a
+
+addDepth :: CCureState -> CCureState
+addDepth (a, b, c, d, e) = (a, b, c, d + 1, e)
+
+removeDepth :: CCureState -> CCureState
+removeDepth (a, b, c, 0, e) = error "trying to remove base depth"
+removeDepth (a, b, c, d, e) = (a, b, c, d - 1, e)
+
+
 execOn :: CCureState -> Bool
-execOn (_, _, _, True) = True
-execOn (_, _, _, False) = False
+execOn (_, _, _, _, True) = True
+execOn (_, _, _, _, False) = False
 
 turnExecOn :: CCureState -> CCureState
-turnExecOn (a, b, c, _) = (a, b, c, True)
+turnExecOn (a, b, c, d, _) = (a, b, c, d, True)
 
 turnExecOff :: CCureState -> CCureState
-turnExecOff (a, b, c, _) = (a, b, c, False)
+turnExecOff (a, b, c, d, _) = (a, b, c, d, False)
