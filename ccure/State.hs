@@ -28,9 +28,12 @@ instance Show Type where
     show (BoolType True) = id "true"
     show (BoolType False) = id "false"
     show (StringType x) = id x
+    show (RegisterType (TypeId id p, l)) = show blz where
+        blz = "Register " ++ id ++ " { " ++ show l ++ " }"
     show (MatrixInt (l, c, m)) = show m
     show (MatrixDouble (l, c, m)) = show m
     show (NULL) = "Isso nao significa nada"
+
 
 type ExAct = Bool
 type DynamicDepth = Int

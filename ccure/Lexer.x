@@ -74,6 +74,7 @@ tokens :-
   matrix                          { \p s -> Matrix (getLC p) }
 
   cast                            { \p s -> Cast (getLC p) }
+  Default                         { \p s -> Default (getLC p) }
   puts                            { \p s -> Puts (getLC p) }
   stup                            { \p s -> Stup (getLC p) }
 
@@ -136,8 +137,9 @@ data Token =
   Matrix               (Int, Int)        |
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
-  Str               (Int, Int)        |
+  Str                  (Int, Int)        |
   Cast                 (Int, Int)        |
+  Default              (Int, Int)        |
   Puts                 (Int, Int)        |
   Stup                 (Int, Int)        |
   IntLit               Int (Int, Int)    |

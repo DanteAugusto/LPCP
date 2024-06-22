@@ -96,6 +96,11 @@ idToken = tokenPrim show update_pos get_token where
   get_token (Id x p) = Just (Id x p)
   get_token _        = Nothing
 
+typeIdToken :: ParsecT [Token] st IO (Token)
+typeIdToken = tokenPrim show update_pos get_token where
+  get_token (TypeId x p) = Just (TypeId x p)
+  get_token _        = Nothing
+
 semiColonToken :: ParsecT [Token] st IO (Token)
 semiColonToken = tokenPrim show update_pos get_token where
   get_token (Semicolon p) = Just (Semicolon p)
@@ -134,6 +139,11 @@ stringToken = tokenPrim show update_pos get_token where
 castToken :: ParsecT [Token] st IO (Token)
 castToken = tokenPrim show update_pos get_token where
   get_token (Cast p) = Just (Cast p)
+  get_token _         = Nothing
+
+defaultToken :: ParsecT [Token] st IO (Token)
+defaultToken = tokenPrim show update_pos get_token where
+  get_token (Default p) = Just (Default p)
   get_token _         = Nothing
 
 putsToken :: ParsecT [Token] st IO (Token)
