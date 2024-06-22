@@ -4,7 +4,6 @@ typeDeclarations
         int a = 0;
         double j = 98.0 + 2.0;
         string ad = "hoohohoho";
-        matrix<>
     endRegister
 
 endTypeDeclarations
@@ -12,10 +11,9 @@ endTypeDeclarations
 program
     Abacate a = Default(Abacate);
     Abacate b = Default(Abacate);
-    puts(a);
+
+    a->a = 23;
+    puts(a->a + 15);
     puts("\n");
 
-    puts(b);
-    puts("\n");
-    -- puts(a);
 end

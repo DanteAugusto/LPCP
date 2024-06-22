@@ -36,6 +36,24 @@ getUserTypeAux (TypeId idType pType) ( (TypeId id1 p1, v1):t ) =
     if idType == id1 then RegisterType (TypeId id1 p1, v1)
     else getUserTypeAux (TypeId idType pType) t
 
+isRegisterType :: Type -> Bool
+isRegisterType (RegisterType _) = True
+isRegisterType _ = False
+
+isRegAttr :: Token -> Type -> Bool
+isRegAttr (Id id p) (RegisterType (TypeId id1 p1, l)) = isRegAttrAux (Id id p) l
+
+isRegAttrAux :: Token -> [(Token, Type)] -> Bool
+isRegAttrAux _ [] = False
+isRegAttrAux (Id id p) ( (Id id1 p1, _):t ) = (id == id1) || isRegAttrAux (Id id p) t
+
+getRegAttr :: Token -> Type -> Type
+getRegAttr (Id id p) (RegisterType (TypeId id1 p1, l)) = getRegAttrAux (Id id p) l
+
+getRegAttrAux :: Token -> [(Token, Type)] -> Type
+getRegAttrAux _ [] = error "attribute not found"
+getRegAttrAux (Id id p) ( (Id id1 p1, v):t ) = if id == id1 then v else getRegAttrAux (Id id p) t
+
 isInUserTypes :: Token -> CCureState -> Bool
 isInUserTypes (TypeId id p) (_, _, _, _, e, _) = isInUserTypesAux (TypeId id p) e
 

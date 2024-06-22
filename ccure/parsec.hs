@@ -20,6 +20,7 @@ import Text.Read.Lex
 import Data.Maybe
 import Distribution.Compat.Lens (_1)
 import System.IO
+import Language.Haskell.TH.PprLib (arrow)
 
 -- alias para tipos usados
 type ParsecType = ParsecT [Token] CCureState IO(Type, [Token])
@@ -118,6 +119,57 @@ attributeRegisterParser id = do
                             s <- getState
                             -- liftIO (print s)
                             return (a:b:[c] ++ (snd d) ++ [e])
+
+
+registerAccess :: Token -> ParsecT [Token] CCureState IO(Type, [Token])
+registerAccess id = do
+                      a <- arrowToken
+                      b <- idToken
+                      s <- getState
+                      -- x   <- matrixSizeParser
+                      -- cb1 <- closeBrackToken
+                      -- ob2 <- openBrackToken
+                      -- y   <- matrixSizeParser
+                      -- cb2 <- closeBrackToken
+
+                      s <- getState
+                      if(execOn s) then do
+                        let currDepth = getCurrentDepth s
+                        let reg = getMayb (symtable_get (id, currDepth) s)
+                        -- Verificar se reg é um RegisterType
+                        if(not $ isRegisterType reg) then fail "Invalid register access"
+                        else
+                          -- Verificar se b é um atributo de reg
+                          if(not $ isRegAttr b reg ) then fail "Invalid attribute access on register"
+                          else
+                            return (getRegAttr b reg, id:a:[b])
+                      else
+                        return (NULL, id:a:[b])
+
+registerAssign :: Token -> ParsecT [Token] CCureState IO([Token])
+registerAssign id = do
+                      a <- arrowToken
+                      b <- idToken
+                      c <- assignToken
+                      d <- expression
+                      e <- semiColonToken
+                      s <- getState
+                      if(execOn s) then do
+                        let currDepth = getCurrentDepth s
+                        let reg = getMayb (symtable_get (id, currDepth) s)
+                        -- Verificar se reg é um RegisterType
+                        if(not $ isRegisterType reg) then fail "Invalid register access"
+                        else
+                          -- Verificar se b é um atributo de reg
+                          if(not $ isRegAttr b reg ) then fail "Invalid attribute access on register"
+                          else
+                            if (not (compatible (getRegAttr b reg, []) d)) then fail "type error on assign"
+                            else
+                              do
+                                updateState(symtable_update_reg_attr (id, currDepth, b, fst d))
+                                return (id:a:b:[c] ++ (snd d) ++ [e])
+                      else
+                        return (id:a:b:[c] ++ (snd d) ++ [e])
 
 
 typeToken :: ParsecT [Token] CCureState IO(Token)
@@ -499,22 +551,24 @@ breakStmt = do
 assign :: ParsecT [Token] CCureState IO([Token])
 assign = do
           a <- idToken
-          b <- assignToken
-          c <- expression
-          d <- semiColonToken
-          s <- getState
-          if(execOn s) then do
-            -- let j = removeQuotes c -- Usado para tirar "" de string
-            -- liftIO(print c)
-            if (not (compatible (get_type a s, []) c)) then fail "type error on assign"
-            else
-              do
-                updateState(symtable_update (a, getCurrentDepth s, fst c))
-                -- s <- getState
-                -- liftIO (print s)
+          try (registerAssign a)
+            <|> do
+              b <- assignToken
+              c <- expression
+              d <- semiColonToken
+              s <- getState
+              if(execOn s) then do
+                -- let j = removeQuotes c -- Usado para tirar "" de string
+                -- liftIO(print c)
+                if (not (compatible (get_type a s, []) c)) then fail "type error on assign"
+                else
+                  do
+                    updateState(symtable_update (a, getCurrentDepth s, fst c))
+                    -- s <- getState
+                    -- liftIO (print s)
+                    return (a:[b] ++ (snd c) ++ [d])
+              else
                 return (a:[b] ++ (snd c) ++ [d])
-          else
-            return (a:[b] ++ (snd c) ++ [d])
 
 -- expression :: ParsecT [Token] CCureState IO(Token)
 -- expression = try bin_expression <|> una_expression
@@ -645,6 +699,7 @@ variableParser :: ParsecT [Token] CCureState IO(Type, [Token])
 variableParser = do
                   id <- idToken
                   try (matrixAcces id)
+                    <|> (registerAccess id)
                     <|>
                     (do
                       s <- getState
@@ -916,14 +971,30 @@ symtable_get_aux (Id id1 p1, depth1) ((Id id2 p2, scop, (depth2, v2):tail):t   )
                             if ((id1, depth1) == (id2, depth2)) then Just v2
                             else symtable_get_aux (Id id1 p1, depth1) t
 
+symtable_update_reg_attr :: (Token, Int, Token, Type) -> CCureState -> CCureState
+symtable_update_reg_attr a (b, c, d, e, f, g) = (symtable_update_reg_attr_aux a b, c, d, e, f, g)
+
+symtable_update_reg_attr_aux :: (Token, Int, Token, Type) -> SymTable -> SymTable
+symtable_update_reg_attr_aux _ [] = error "variable not found"
+symtable_update_reg_attr_aux (Id idTypeToInsert pTypeToInsert, depthTypeToInsert, Id idAttrToupdate pAttrToupdate, vAttrToupdate) ((Id id p, scop, (depth, RegisterType (a, b)):tail):t   ) =
+                                if ((idTypeToInsert, depthTypeToInsert) == (id, depth)) then (Id id p, scop, (depth, RegisterType (a, symtable_update_reg_attr_aux_aux (Id idAttrToupdate pAttrToupdate, vAttrToupdate) b)):tail):t
+                                else (Id id p, scop, (depth, RegisterType (a, b)):tail) : symtable_update_reg_attr_aux (Id idTypeToInsert pTypeToInsert, depthTypeToInsert, Id idAttrToupdate pAttrToupdate, vAttrToupdate) t
+
+symtable_update_reg_attr_aux_aux :: (Token, Type) -> [(Token, Type)] -> [(Token, Type)]
+symtable_update_reg_attr_aux_aux _ [] = error "variable not found"
+symtable_update_reg_attr_aux_aux (Id idToInsert pToInsert, vToInsert) ((Id id p, v):t) =
+                                if (idToInsert == id) then (Id id p, vToInsert):t
+                                else (Id id p, v):symtable_update_reg_attr_aux_aux (Id idToInsert pToInsert, vToInsert) t
+
+
+
 isInSymTable :: (Token, Int) -> CCureState -> Bool
 isInSymTable (a, d) (b, _, _, _, _, _) = isInSymTable_aux (a, d) b
 
 isInSymTable_aux :: (Token, Int) -> SymTable -> Bool
 isInSymTable_aux _ [] = False
 isInSymTable_aux (Id id1 p1, depth1) ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
-                            if ((id1, depth1) == (id2, depth2)) then True
-                            else isInSymTable_aux (Id id1 p1, depth1) t
+                            ((id1, depth1) == (id2, depth2)) || isInSymTable_aux (Id id1 p1, depth1) t
 
 -- invocação do parser para o símbolo de partida 
 

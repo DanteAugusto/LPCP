@@ -6,6 +6,11 @@ module Tokens where
 import Lexer
 import Text.Parsec
 
+arrowToken :: ParsecT [Token] st IO (Token)
+arrowToken = tokenPrim show update_pos get_token where
+  get_token (Arrow p) = Just (Arrow p)
+  get_token _         = Nothing
+
 programToken :: ParsecT [Token] st IO (Token)
 programToken = tokenPrim show update_pos get_token where
   get_token (Program p) = Just (Program p)
