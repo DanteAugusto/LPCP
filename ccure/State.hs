@@ -49,8 +49,9 @@ getCurrentLoopStatus _ = error "trying to access unexistent LoopStatus"
 
 
 addToScopeStack :: String -> CCureState -> CCureState
-addToScopeStack newScope (a, stack, b, c) = (a, newScope:stack, b, c)
--- addToScopeStack (_, top:tail, _) newScope = (_, (newScope ++ ['#'] ++ top):top:tail, _)
+-- addToScopeStack newScope (a, stack, b, c) = (a, newScope:stack, b, c)
+addToScopeStack newScope (a, top:tail, b, c)  = (a, (newScope ++ ['#'] ++ top):top:tail, b, c)
+addToScopeStack newScope (a, [], b, c)  = (a, [newScope], b, c)
 
 getCurrentScope :: CCureState -> String
 getCurrentScope (_, top:tail, _, _) = top
