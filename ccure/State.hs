@@ -1,3 +1,7 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant id" #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module State where
 
 import Lexer
@@ -16,7 +20,17 @@ data Type =
     ArrayType (Int, [Type]) |
     MatrixInt (Int, Int, [[Int]]) |
     MatrixDouble (Int, Int, [[Double]])
-    deriving (Eq, Show)
+    deriving (Eq)
+
+instance Show Type where
+    show (IntType x) = id show x
+    show (DoubleType x) = show x
+    show (BoolType True) = id "true"
+    show (BoolType False) = id "false"
+    show (StringType x) = id x
+    show (MatrixInt (l, c, m)) = show m
+    show (MatrixDouble (l, c, m)) = show m
+    show (NULL) = "Isso nao significa nada"
 
 type ExAct = Bool
 -- Nome, profundidade de chamada, valor e escopo
@@ -56,6 +70,9 @@ addToScopeStack newScope (a, [], b, c)  = (a, [newScope], b, c)
 getCurrentScope :: CCureState -> String
 getCurrentScope (_, top:tail, _, _) = top
 getCurrentScope _ = error "trying to access unexistent scope"
+
+getTopScope :: CCureState -> String
+getTopScope a = takeWhile (/= '#') (getCurrentScope a)
 
 removeFromScopeStack :: CCureState -> CCureState
 removeFromScopeStack (_, [], _, _) = error "trying to remove unexistent scope"

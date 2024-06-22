@@ -70,6 +70,7 @@ tokens :-
   double                          { \p s -> Double (getLC p) }
   -- float                           { \p s -> Float (getLC p) }
   bool                            { \p s -> Bool (getLC p) }
+  string                          { \p s -> Str (getLC p) }
   matrix                          { \p s -> Matrix (getLC p) }
 
   cast                            { \p s -> Cast (getLC p) }
@@ -79,6 +80,7 @@ tokens :-
   $digit+	                            { \p s -> IntLit (read s) (getLC p) }
   $digit+\.$digit+	                  { \p s -> DoubleLit (read s) (getLC p) }
   ("True"|"False")                    { \p s -> BoolLit (read s) (getLC p) }
+  \" [$printable]* \"     { \p s -> StringLit (read s) (getLC p) }
   $lowerAlpha [$alpha $digit \_]*	    { \p s -> Id s (getLC p)}
   $upperAlpha [$alpha $digit \_]*	    { \p s -> TypeId s (getLC p)}
 
@@ -134,13 +136,14 @@ data Token =
   Matrix               (Int, Int)        |
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
-  String               (Int, Int)        |
+  Str               (Int, Int)        |
   Cast                 (Int, Int)        |
   Puts                 (Int, Int)        |
   Stup                 (Int, Int)        |
   IntLit               Int (Int, Int)    |
   DoubleLit            Double (Int, Int) |
   BoolLit              Bool   (Int, Int) |
+  StringLit            String (Int, Int) |
   Id                   String (Int, Int) |
   TypeId               String (Int, Int)  
   deriving (Eq, Show)

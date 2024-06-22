@@ -126,6 +126,11 @@ boolToken = tokenPrim show update_pos get_token where
   get_token (Bool p) = Just (Bool p)
   get_token _         = Nothing
 
+stringToken :: ParsecT [Token] st IO (Token)
+stringToken = tokenPrim show update_pos get_token where
+  get_token (Str p) = Just (Str p)
+  get_token _         = Nothing
+
 castToken :: ParsecT [Token] st IO (Token)
 castToken = tokenPrim show update_pos get_token where
   get_token (Cast p) = Just (Cast p)
@@ -250,6 +255,11 @@ doubleLitToken = tokenPrim show update_pos get_token where
 boolLitToken :: ParsecT [Token] st IO (Token)
 boolLitToken = tokenPrim show update_pos get_token where
   get_token (BoolLit x p) = Just (BoolLit x p)
+  get_token _      = Nothing
+
+stringLitToken :: ParsecT [Token] st IO (Token)
+stringLitToken = tokenPrim show update_pos get_token where
+  get_token (StringLit x p) = Just (StringLit x p)
   get_token _      = Nothing
 
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos

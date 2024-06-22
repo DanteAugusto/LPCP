@@ -1,45 +1,84 @@
 program
-    int l = 0;int c = 0;
+    int l1 = 0;int c1 = 0;int l2 = 0;int c2 = 0;
     
-    stup(l, int);
-    stup(c, int);
-    
-    matrix<l, c, int> m1 = 0;
-    matrix<l, c, int> m2 = 0;
-    
+    puts("Digite a quantidade de linhas da primeira matriz: ");
+    stup(l1, int);
+    puts("Digite a quantidade de colunas da primeira matriz: ");
+    stup(c1, int);
+
+    matrix<l1, c1, int> m1 = 0;
+
+    puts("Digite as entradas da primeira matriz: \n");
     int i = 0;
-    int j = 0;
-    while(i < l)
-        j = 0;
-        while(j < c)
+    while(i < l1)
+        int j = 0;
+        while(j < c1)
+            puts(i);
+            puts(" ");
+            puts(j);
+            puts(": ");
             stup(m1[i][j], int);
             j = j + 1;
         endWhile
         i = i + 1;
     endWhile
+
+
+    puts("Digite a quantidade de linhas da segunda matriz: ");
+    stup(l2, int);
+    puts("Digite a quantidade de colunas da segunda matriz: ");
+    stup(c2, int);
+    
+    matrix<l2, c2, int> m2 = 0;
+
+    puts("Digite as entradas da segunda matriz: \n");
     i = 0;
-    j = 0;
-    while(i < l)
-        j = 0;
-        while(j < c)
+    while(i < l2)
+        int j = 0;
+        while(j < c2)
+            puts(i);
+            puts(" ");
+            puts(j);
+            puts(": ");
             stup(m2[i][j], int);
             j = j + 1;
         endWhile
         i = i + 1;
     endWhile
 
-    matrix<l, c, int> m3 = m1 <*> m2;
 
-    i = 0;
-    j = 0;
-    while(i < l)
-        j = 0;
-        while(j < c)
-            puts(m3[i][j]);
-            j = j + 1;
-        endWhile
-        i = i + 1;
+    bool pode_soma = False;
+    while(l1 == l2 && c1 == c2)
+        pode_soma = True;
+        puts("Realizar a soma...\n");
+        
+        matrix<l1, c1, int> soma = m1 <+> m2;
+        puts(soma);
+        puts("\n");
+
+        break;
     endWhile
 
+    while(!pode_soma)
+        puts("Não foi possível realizar a soma.\n");
+        break;
+    endWhile
+
+    bool pode_mult = False;
+    while( c1 == l2 )
+        pode_mult = True;
+        puts("Realizar a multiplicação...\n");
+
+        matrix<l1, c2, int> mult = m1 <*> m2;
+        puts(mult);
+        puts("\n");
+
+        break;
+    endWhile
+
+    while(!pode_mult)
+        puts("Não foi possível realizar a multiplicação.\n");
+        break;
+    endWhile
 
 end

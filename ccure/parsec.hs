@@ -18,6 +18,7 @@ import System.IO.Unsafe
 import Text.Read.Lex
 import Data.Maybe
 import Distribution.Compat.Lens (_1)
+import System.IO
 
 -- alias para tipos usados
 type ParsecType = ParsecT [Token] CCureState IO(Type, [Token])
@@ -39,7 +40,7 @@ program = do
             return ([a] ++ b ++ [c])
 
 typeToken :: ParsecT [Token] CCureState IO(Token)
-typeToken = try intToken <|> doubleToken <|> boolToken
+typeToken = try intToken <|> doubleToken <|> boolToken <|> stringToken
 
                       
 matrixSizeParser :: ParsecT [Token] CCureState IO(Type, [Token])
@@ -145,7 +146,7 @@ matrixDecl = do
                       s <- getState
                       let matrixToSave = makeMatrixType (fst lin) (fst col) (fst initVal)
                       updateState(symtable_insert (id, getCurrentScope s, [(0, matrixToSave)]))
-                      liftIO (print matrixToSave)
+                      -- liftIO (print matrixToSave)
                       return  (mat:[l] ++ (snd lin) ++ [a] ++ (snd col) ++ b:typ:r:id:[assig] ++ (snd initVal) ++[sc])
               else
                 return (mat:[l] ++ (snd lin) ++ [a] ++ (snd col) ++ b:typ:r:id:[assig] ++ (snd initVal) ++[sc])
@@ -162,6 +163,7 @@ varDecl = do
             s <- getState
 
             if(execOn s) then do
+              -- let j = removeQuotes d -- Usado para tirar "" de string
               -- liftIO(print c)
               if (not (compatible_varDecl a d)) then fail "type error on declaration"
               else 
@@ -173,6 +175,10 @@ varDecl = do
                   return (a:b:[c] ++ (snd d) ++ [e])
             else
               return (a:b:[c] ++ (snd d) ++ [e])
+
+-- removeQuotes :: (Type, [Token]) -> (Type, [Token])
+-- removeQuotes ( StringType x , b) = ( StringType  x , b)
+-- removeQuotes (a, b) = (a, b)
 
 stmts :: ParsecT [Token] CCureState IO([Token])
 stmts = do
@@ -198,7 +204,8 @@ printPuts = do
               e <- semiColonToken
               s <- getState
               if(execOn s) then do
-                liftIO (print (fst c))
+                liftIO (putStr $ show (fst c))
+                liftIO (hFlush stdout)
               else pure()
               return (a:[b] ++ (snd c) ++ d:[e])
 
@@ -273,6 +280,7 @@ convertStringToType x (Bool _) =
       else do
         if (x == "False") then (BoolType False)
         else error "could not convert input to boolean value"
+convertStringToType x (Str _) = (StringType x)
 
 -- Função para ler e converter uma String em Int
 readInt :: String -> Either String Int
@@ -355,7 +363,7 @@ breakStmt = do
                 s <- getState
 
 
-                if((getCurrentScope s)== "while") then do
+                if((getTopScope s)== "while") then do
                   updateState(turnExecOff)
                   -- updateState((addToLoopStack.removeFromLoopStack) BREAK)
                   updateState(removeFromLoopStack)
@@ -378,6 +386,7 @@ assign = do
           d <- semiColonToken
           s <- getState
           if(execOn s) then do
+            -- let j = removeQuotes c -- Usado para tirar "" de string
             -- liftIO(print c)
             if (not (compatible (get_type a s, []) c)) then fail "type error on assign"
             else 
@@ -500,13 +509,14 @@ cast (DoubleType v) (Double _) = DoubleType v
 
 expi :: ParsecT [Token] CCureState IO(Type, [Token])      
 expi = try (do
-        x <- intLitToken <|> doubleLitToken <|> boolLitToken
+        x <- intLitToken <|> doubleLitToken <|> boolLitToken <|> stringLitToken
         return (tokenToType x, [x])) <|> castParser <|> enclosed_exp <|> variableParser
 
 tokenToType :: Token -> Type
 tokenToType (IntLit v _)    = IntType v
 tokenToType (DoubleLit v _) = DoubleType v
 tokenToType (BoolLit v _)   = BoolType v
+tokenToType (StringLit v _)   = StringType v
 tokenToType _               = undefined
 
 variableParser :: ParsecT [Token] CCureState IO(Type, [Token])
@@ -524,6 +534,7 @@ variableParser = do
                   
 getMayb :: Maybe a -> a
 getMayb (Just a) = a
+getMayb Nothing = error "GetMayb deu ruim"
 
 --- funções considerando associatividade à esquerda                  
 eval_remaining :: (Type, [Token]) -> ParsecTokenType -> ParsecType -> ParsecT [Token] CCureState IO(Type, [Token])
@@ -683,6 +694,7 @@ compatible :: (Type, [Token]) -> (Type, [Token]) -> Bool
 compatible (IntType _, _) (IntType _, _) = True
 compatible (DoubleType _, _) (DoubleType _, _) = True
 compatible (BoolType _, _) (BoolType _, _) = True
+compatible (StringType _, _) (StringType _, _) = True
 compatible _ _ = False
 
 compatible_matrix :: (Type, [Token]) -> (Type, [Token]) -> Bool
@@ -694,6 +706,7 @@ compatible_varDecl :: Token -> (Type, [Token]) -> Bool
 compatible_varDecl (Int _) (IntType _, _) = True
 compatible_varDecl (Double _) (DoubleType _, _) = True
 compatible_varDecl (Bool _) (BoolType _, _) = True
+compatible_varDecl (Str _) (StringType _, _) = True
 compatible_varDecl _ _ = False
 
 compatible_matrix_assign :: Token -> (Type, [Token]) -> Type -> Type -> Bool
@@ -775,7 +788,7 @@ symtable_get :: (Token, Int) -> CCureState -> Maybe Type
 symtable_get (a, d) (b, _, _, _) = symtable_get_aux (a, d) b
 
 symtable_get_aux :: (Token, Int) -> SymTable -> Maybe Type
-symtable_get_aux _ [] = fail "variable not found"
+symtable_get_aux _ [] = error "variable not found"
 symtable_get_aux (Id id1 p1, depth1) ((Id id2 p2, scop, (depth2, v2):tail):t   ) = 
                             if ((id1, depth1) == (id2, depth2)) then Just v2
                             else symtable_get_aux (Id id1 p1, depth1) t
@@ -788,5 +801,5 @@ parser tokens = runParserT program ([], [], [], True) "Error message" tokens
 main :: IO ()
 main = case unsafePerformIO (parser (getTokens "problemas/problema3.ccr")) of
             { Left err -> print err; 
-              Right ans -> print ans
+              Right ans -> print "Program ended successfully!"
             }
