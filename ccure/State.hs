@@ -15,7 +15,7 @@ data Type =
     IntType Int |
     BoolType Bool |
     StringType String |
-    StructType (String, [(String, Type)]) | 
+    RegisterType (Token, [(Token, Type)]) | 
     PointerType (Type, (String, String)) |
     ArrayType (Int, [Type]) |
     MatrixInt (Int, Int, [[Int]]) |
@@ -41,43 +41,44 @@ type SymTable = [(Token, String, [(Int, Type)])]
 -- type ActRegSubprog = [(String, [String])]
 type ScopeStack = [String]
 type LoopStack = [LoopStatus]
+type UserTypes = [(Token, [(Token, Type)])]
 
-type CCureState = (SymTable, ScopeStack, LoopStack, DynamicDepth, ExAct)
+type CCureState = (SymTable, ScopeStack, LoopStack, DynamicDepth, UserTypes, ExAct)
 
 -- funções auxiliares para o CCureState
 
 addToLoopStack :: LoopStatus -> CCureState -> CCureState
-addToLoopStack newLoopStatus (a, b,stack, c, d)  = (a, b, newLoopStatus:stack, c, d)
+addToLoopStack newLoopStatus (a, b,stack, c, d, e)  = (a, b, newLoopStatus:stack, c, d, e)
 
 -- removeFromLoopStack :: CCureState -> CCureState
 -- removeFromLoopStack (_, _, [], _) = error "trying to remove unexistent Loop"
 -- removeFromLoopStack (a, b, stack:tail, c) = (a, b, tail, c)
 
 removeFromLoopStack :: CCureState -> CCureState
-removeFromLoopStack (_, _, [], _, _) = error "trying to remove unexistent Loop"
-removeFromLoopStack (a, b, stack:tail, c , d) = (a, b, tail, c, d)
+removeFromLoopStack (_, _, [], _, _, _) = error "trying to remove unexistent Loop"
+removeFromLoopStack (a, b, stack:tail, c , d, e) = (a, b, tail, c, d, e)
 
 getCurrentLoopStatus :: CCureState -> LoopStatus
-getCurrentLoopStatus (_, _, top:tail, _, _) = top
+getCurrentLoopStatus (_, _, top:tail, _, _, _) = top
 getCurrentLoopStatus _ = error "trying to access unexistent LoopStatus"
 
 
 
 addToScopeStack :: String -> CCureState -> CCureState
 -- addToScopeStack newScope (a, stack, b, c) = (a, newScope:stack, b, c)
-addToScopeStack newScope (a, top:tail, b, c, d)  = (a, (newScope ++ ['#'] ++ top):top:tail, b, c, d)
-addToScopeStack newScope (a, [], b, c, d)  = (a, [newScope], b, c, d)
+addToScopeStack newScope (a, top:tail, b, c, d, e)  = (a, (newScope ++ ['#'] ++ top):top:tail, b, c, d, e)
+addToScopeStack newScope (a, [], b, c, d, e)  = (a, [newScope], b, c, d, e)
 
 getCurrentScope :: CCureState -> String
-getCurrentScope (_, top:tail, _, _, _) = top
+getCurrentScope (_, top:tail, _, _, _, _) = top
 getCurrentScope _ = error "trying to access unexistent scope"
 
 getTopScope :: CCureState -> String
 getTopScope a = takeWhile (/= '#') (getCurrentScope a)
 
 removeFromScopeStack :: CCureState -> CCureState
-removeFromScopeStack (_, [], _, _, _) = error "trying to remove unexistent scope"
-removeFromScopeStack (a, stack:tail, b, c, d) = (a, tail, b, c, d)
+removeFromScopeStack (_, [], _, _, _, _) = error "trying to remove unexistent scope"
+removeFromScopeStack (a, stack:tail, b, c, d, e) = (a, tail, b, c, d, e)
 
 -- getCurrentScope :: CCureState -> String
 -- getCurrentScope (_, [top]:tail, _) = getCurrentScopeAux(top)
@@ -88,22 +89,22 @@ removeFromScopeStack (a, stack:tail, b, c, d) = (a, tail, b, c, d)
 -- getCurrentScopeAux top:tail = top : getCurrentScopeAux tail
 
 getCurrentDepth :: CCureState -> Int
-getCurrentDepth (_, _, _, a, _) = a
+getCurrentDepth (_, _, _, a, _, _) = a
 
 addDepth :: CCureState -> CCureState
-addDepth (a, b, c, d, e) = (a, b, c, d + 1, e)
+addDepth (a, b, c, d, e, f) = (a, b, c, d + 1, e, f)
 
 removeDepth :: CCureState -> CCureState
-removeDepth (a, b, c, 0, e) = error "trying to remove base depth"
-removeDepth (a, b, c, d, e) = (a, b, c, d - 1, e)
+removeDepth (a, b, c, 0, e, f) = error "trying to remove base depth"
+removeDepth (a, b, c, d, e, f) = (a, b, c, d - 1, e, f)
 
 
 execOn :: CCureState -> Bool
-execOn (_, _, _, _, True) = True
-execOn (_, _, _, _, False) = False
+execOn (_, _, _, _, _, True) = True
+execOn (_, _, _, _, _, False) = False
 
 turnExecOn :: CCureState -> CCureState
-turnExecOn (a, b, c, d, _) = (a, b, c, d, True)
+turnExecOn (a, b, c, d, e, _) = (a, b, c, d, e, True)
 
 turnExecOff :: CCureState -> CCureState
-turnExecOff (a, b, c, d, _) = (a, b, c, d, False)
+turnExecOff (a, b, c, d, e, _) = (a, b, c, d, e, False)

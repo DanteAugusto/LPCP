@@ -11,6 +11,7 @@ import Lexer
 import State
 import Tokens
 import MatrixUtils
+import RegisterUtils
 import Text.Read
 import Text.Parsec
 import Control.Monad.IO.Class
@@ -27,17 +28,97 @@ type ParsecTokenType = ParsecT [Token] CCureState IO (Token)
 -- parsers para os não-terminais
 program :: ParsecT [Token] CCureState IO ([Token])
 program = do
+            a <- declarations
+            -- Desligar exec para chamar funcao
             updateState(addToScopeStack "program")
-            a <- programToken 
-            b <- stmts
-            c <- endToken
+            updateState(turnExecOn)
+            b <- programToken 
+            c <- stmts
+            d <- endToken
             s <- getState
             updateState(symtable_remove_scope (getCurrentScope s))
             updateState(removeFromScopeStack)
             eof
             s <- getState
             liftIO (print s)
-            return ([a] ++ b ++ [c])
+            return (a ++ [b] ++ c ++ [d])
+
+declarations :: ParsecT [Token] CCureState IO ([Token])
+declarations = do
+                  a <- typeDeclarations
+                  -- b <- globalVariables
+                  return a
+
+typeDeclarations :: ParsecT [Token] CCureState IO ([Token])
+typeDeclarations = try (do
+                      a <- typeDeclarationsToken
+                      b <- typeDecs
+                      c <- endTypeDeclarationsToken
+                      return ([a] ++ b ++ [c]))
+                    <|> return []
+
+typeDecs :: ParsecT [Token] CCureState IO ([Token])
+typeDecs = do
+            first <- typeDec
+            next <- remainingTypeDecs
+            return (first ++ next)
+
+remainingTypeDecs :: ParsecT [Token] CCureState IO([Token])
+remainingTypeDecs = (do
+                  a <- typeDec
+                  b <- remainingTypeDecs 
+                  return (a ++ b)) <|> return ([])
+
+typeDec :: ParsecT [Token] CCureState IO ([Token])
+typeDec = do
+            a <- registerToken
+            b <- idToken
+            s <- getState
+            updateState (insertUserType b)
+            c <- varDeclsRegister b
+            d <- endRegisterToken
+            return (a:[b] ++ c ++ [d])
+
+varDeclsRegister :: Token -> ParsecT [Token] CCureState IO ([Token])
+varDeclsRegister id = do
+                        first <- varDeclRegister id
+                        next <- remainingvarDeclsRegister id
+                        return (first ++ next)
+
+remainingvarDeclsRegister :: Token -> ParsecT [Token] CCureState IO([Token])
+remainingvarDeclsRegister id = (do
+                                  a <- varDeclRegister id
+                                  b <- remainingvarDeclsRegister id
+                                  return (a ++ b)) <|> return ([])
+
+varDeclRegister :: Token -> ParsecT [Token] CCureState IO ([Token])
+varDeclRegister id = do
+                        a <- typeToken
+                        b <- idToken
+                        c <- assignToken
+                        d <- expression
+                        -- liftIO (print "olha a expressao ai o")
+                        -- liftIO (print d)
+                        e <- semiColonToken
+                        s <- getState
+
+                        -- liftIO (print "varDeclRegister")
+                        -- liftIO (print a)
+                        -- liftIO (print b)
+                        -- liftIO (print c)
+                        -- liftIO (print d)
+
+                        -- let j = removeQuotes d -- Usado para tirar "" de string
+                        -- liftIO(print c)
+                        if (not (compatible_varDecl a d)) then fail "type error on declaration"
+                        else 
+                          do
+                            s <- getState
+                            updateState( addAttrToUserTypes id (b, fst d) )
+                            s <- getState
+                            -- liftIO (print s)
+                            return (a:b:[c] ++ (snd d) ++ [e])
+
 
 typeToken :: ParsecT [Token] CCureState IO(Token)
 typeToken = try intToken <|> doubleToken <|> boolToken <|> stringToken
@@ -725,27 +806,27 @@ compatible_matrix_assign _ _ _ _ = False
 -- funções para a tabela de símbolos
 
 get_type :: Token -> CCureState -> Type
-get_type _ ([], _, _, _, _) = error "variable not found"
-get_type (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d) = if id1 == id2 then value
-                                             else get_type (Id id1 p1) (t, a, b, c, d)
+get_type _ ([], _, _, _, _, _) = error "variable not found"
+get_type (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d, e) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b, c, d, e)
 -- get_type (Id id1 p1) _ = error "o misterio"
 
 get_type_matrix :: Token -> CCureState -> Type
 
-get_type_matrix _ ([], _, _, _, _) = error "variable not found"
-get_type_matrix (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d) = if id1 == id2 then value
-                                             else get_type (Id id1 p1) (t, a, b, c, d)
+get_type_matrix _ ([], _, _, _, _, _) = error "variable not found"
+get_type_matrix (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d, e) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b, c, d, e)
 
 get_bool_value :: Type -> Bool
 get_bool_value (BoolType a) = a
 get_bool_value _ = error "token is not a boolean"
 
 symtable_insert :: (Token, String, [(Int, Type)]) -> CCureState -> CCureState
-symtable_insert symbol ([], a, b, c, d)  = ([symbol], a, b, c, d)
-symtable_insert symbol (symtable, a, b, c, d) = ((symbol:symtable), a, b, c, d)
+symtable_insert symbol ([], a, b, c, d, e)  = ([symbol], a, b, c, d, e)
+symtable_insert symbol (symtable, a, b, c, d, e) = ((symbol:symtable), a, b, c, d, e)
 
 symtable_update_matrix :: (Token, Int, Int, Int, Type) -> CCureState -> CCureState
-symtable_update_matrix a (b, c, d, e, f) = (symtable_update_matrix_aux a b, c, d, e, f)  
+symtable_update_matrix a (b, c, d, e, f, g) = (symtable_update_matrix_aux a b, c, d, e, f, g)  
 
 symtable_update_matrix_aux :: (Token, Int, Int, Int, Type) -> SymTable -> SymTable
 symtable_update_matrix_aux _ [] = error "variable not found"
@@ -761,7 +842,7 @@ symtable_update_matrix_aux _ _ = error "batata"
 
 
 symtable_update :: (Token, Int, Type) -> CCureState -> CCureState
-symtable_update a (b, c, d, e, f) = (symtable_update_aux a b, c, d, e, f)
+symtable_update a (b, c, d, e, f, g) = (symtable_update_aux a b, c, d, e, f, g)
 
 symtable_update_aux :: (Token, Int, Type) -> SymTable -> SymTable
 symtable_update_aux _ [] = fail "variable not found"
@@ -771,7 +852,7 @@ symtable_update_aux (Id id1 p1, depth1, v1) ((Id id2 p2, scop, (depth2, v2):tail
 
 -- Percorre a lista enquanto String for igual a escopo. Depois para
 symtable_remove_scope :: String -> CCureState -> CCureState
-symtable_remove_scope a (b, c, d, e, f) = (symtable_remove_scope_aux a b, c, d, e, f)
+symtable_remove_scope a (b, c, d, e, f, g) = (symtable_remove_scope_aux a b, c, d, e, f, g)
 
 symtable_remove_scope_aux :: String -> SymTable -> SymTable
 symtable_remove_scope_aux _ [] = []
@@ -786,10 +867,10 @@ symtable_remove_scope_aux a ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
 -- symtable_remove_aux _ [] = fail "variable not found"
 -- symtable_remove_aux (id1, v1) ((id2, v2):t) = 
 --                                if id1 == id2 then t
---                                else (id2, v2) : symtable_remove_aux (id1, v1) t   
+--                                else (id2, v2) : symtable_remove_aux (id1, v1) t
 
 symtable_get :: (Token, Int) -> CCureState -> Maybe Type
-symtable_get (a, d) (b, _, _, _, _) = symtable_get_aux (a, d) b
+symtable_get (a, d) (b, _, _, _, _, _) = symtable_get_aux (a, d) b
 
 symtable_get_aux :: (Token, Int) -> SymTable -> Maybe Type
 symtable_get_aux _ [] = error "variable not found"
@@ -800,10 +881,10 @@ symtable_get_aux (Id id1 p1, depth1) ((Id id2 p2, scop, (depth2, v2):tail):t   )
 -- invocação do parser para o símbolo de partida 
 
 parser :: [Token] -> IO (Either ParseError [Token])
-parser tokens = runParserT program ([], [], [], 0, True) "Error message" tokens
+parser tokens = runParserT program ([], [], [], 0, [], True) "Error message" tokens
 
 main :: IO ()
-main = case unsafePerformIO (parser (getTokens "problemas/problema1.ccr")) of
+main = case unsafePerformIO (parser (getTokens "problemas/problema4.ccr")) of
             { Left err -> print err; 
               Right ans -> print "Program ended successfully!"
             }

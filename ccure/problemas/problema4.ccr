@@ -1,0 +1,13 @@
+typeDeclarations
+
+    register abacate
+        int a = 0;
+        double j = 98.0 + 2.0;
+        string ad = "hoohohoho";
+    endRegister
+
+endTypeDeclarations
+
+program
+    int a = 2;
+end
