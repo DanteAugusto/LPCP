@@ -1,13 +1,45 @@
 program
-    int l = 3;
-    int c = 3;
-
-    -- stup(l, int);
-    -- stup(c, int);
+    int l = 0;int c = 0;
     
-    matrix<l, c, double> m1 = 5.3;
-    matrix<l, c, double> m2 = 0.25;
+    stup(l, int);
+    stup(c, int);
+    
+    matrix<l, c, int> m1 = 0;
+    matrix<l, c, int> m2 = 0;
+    
+    int i = 0;
+    int j = 0;
+    while(i < l)
+        j = 0;
+        while(j < c)
+            stup(m1[i][j], int);
+            j = j + 1;
+        endWhile
+        i = i + 1;
+    endWhile
+    i = 0;
+    j = 0;
+    while(i < l)
+        j = 0;
+        while(j < c)
+            stup(m2[i][j], int);
+            j = j + 1;
+        endWhile
+        i = i + 1;
+    endWhile
 
-    matrix<l, c, double> m3 = (4.0 * m2) <*> m2;
-    matrix<l, c, double> m4 = m1 <+> m2;
+    matrix<l, c, int> m3 = m1 <*> m2;
+
+    i = 0;
+    j = 0;
+    while(i < l)
+        j = 0;
+        while(j < c)
+            puts(m3[i][j]);
+            j = j + 1;
+        endWhile
+        i = i + 1;
+    endWhile
+
+
 end

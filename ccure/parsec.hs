@@ -41,8 +41,6 @@ program = do
 typeToken :: ParsecT [Token] CCureState IO(Token)
 typeToken = try intToken <|> doubleToken <|> boolToken
 
-numericalTypeToken :: ParsecT [Token] CCureState IO(Token)
-numericalTypeToken = try intToken <|> doubleToken
                       
 matrixSizeParser :: ParsecT [Token] CCureState IO(Type, [Token])
 matrixSizeParser = try (do 
@@ -73,6 +71,26 @@ expiMatrix = try (do
 matrixOpToken :: ParsecT [Token] CCureState IO(Token)
 matrixOpToken = try multMatrixToken <|> plusMatrixToken <|> plusToken <|> multToken
 
+matrixAcces :: Token -> ParsecT [Token] CCureState IO(Type, [Token])
+matrixAcces id = do
+                ob1 <- openBrackToken
+                x   <- matrixSizeParser
+                cb1 <- closeBrackToken
+                ob2 <- openBrackToken
+                y   <- matrixSizeParser
+                cb2 <- closeBrackToken
+
+                s <- getState
+                if(execOn s) then do
+                  let matrix = getMayb (symtable_get (id, 0) s)
+                  if not $ validAccess (fst x) (fst y) then fail "Negative indexes, access is not allowed" 
+                  else
+                    if(not $ canAccesMatrix (fst x) (fst y) matrix) then fail "Invalid indexes on trying to access matrix"
+                    else   
+                      return (getValFromMatrix (fst x) (fst y) matrix, id:[ob1] ++ (snd x) ++ cb1:[ob2] ++ (snd y) ++ [cb2])
+                else 
+                  return (NULL, id:[ob1] ++ (snd x) ++ cb1:[ob2] ++ (snd y) ++ [cb2])
+
 eval_remaining_matrix :: (Type, [Token]) -> ParsecTokenType -> ParsecType -> ParsecT [Token] CCureState IO(Type, [Token])
 eval_remaining_matrix m1 operator remain = (do
                                 op <- operator
@@ -101,12 +119,12 @@ matrixDecl = do
               col <- matrixSizeParser
               b <- commaToken
 
-              typ <- numericalTypeToken
+              typ <- intToken <|> doubleToken
               r <- greatToken
               
               id <- idToken
               assig <- assignToken
-              
+
               initVal <- matrixExpr <|> (do 
                                           x <- intLitToken <|> doubleLitToken
                                           return (tokenToType x, [x])) 
@@ -127,7 +145,6 @@ matrixDecl = do
                       s <- getState
                       let matrixToSave = makeMatrixType (fst lin) (fst col) (fst initVal)
                       updateState(symtable_insert (id, getCurrentScope s, [(0, matrixToSave)]))
-                      s <- getState
                       liftIO (print matrixToSave)
                       return  (mat:[l] ++ (snd lin) ++ [a] ++ (snd col) ++ b:typ:r:id:[assig] ++ (snd initVal) ++[sc])
               else
@@ -185,25 +202,62 @@ printPuts = do
               else pure()
               return (a:[b] ++ (snd c) ++ d:[e])
 
+matrixStup :: Token -> ParsecT [Token] CCureState IO([Token])
+matrixStup id = do
+                  ob1 <- openBrackToken
+                  (xt, xx)   <- matrixSizeParser
+                  cb1 <- closeBrackToken
+                  ob2 <- openBrackToken
+                  (yt, yy)   <- matrixSizeParser
+                  cb2 <- closeBrackToken
+
+                  d <- commaToken
+                  e <- typeToken
+                  f <- closeParentToken
+                  g <- semiColonToken
+                  s <- getState
+
+                  if(execOn s) then do
+                    input <- liftIO(getLine)
+                    let strConverted = convertStringToType input e
+                    let matrix = getMayb (symtable_get (id, 0) s)
+                    if not $ validAccess xt yt then fail "Negative indexes, access is not allowed" 
+                    else
+                      if(not $ canAccesMatrix xt yt matrix) then fail "Invalid indexes on trying to access matrix"
+                      else   
+                        if(not (compatible_matrix (get_type id s, []) (strConverted, []) )) then fail "type error on input"
+                        else do 
+                          updateState(symtable_update_matrix (id, 0, getValFromType xt, getValFromType yt, strConverted))
+                          return (id:[ob1] ++ xx ++ cb1:[ob2] ++ yy ++ [cb2])
+                  else 
+                    return (id:[ob1] ++ xx ++ cb1:[ob2] ++ yy ++ [cb2])
+
+getValFromType :: Type -> Int
+getValFromType (IntType v) = v
+getValFromType _           = 0
+
 readStup :: ParsecT [Token] CCureState IO([Token])
 readStup = do 
               a <- stupToken
               b <- openParentToken
               c <- idToken
-              d <- commaToken
-              e <- typeToken
-              f <- closeParentToken
-              g <- semiColonToken
-              s <- getState
-              if(execOn s) then do
-                input <- liftIO(getLine)
-                let strConverted = convertStringToType input e
-                if(not (compatible (get_type c s, []) (strConverted, []) )) then fail "type error on input"
-                else do
-                  updateState(symtable_update (c, 0 ,strConverted))
-                  return (a:b:c:d:e:f:[g])
-                
-              else return (a:b:c:d:e:f:[g])
+              try (do
+                    matrixStup c
+                ) <|> do
+                        d <- commaToken
+                        e <- typeToken
+                        f <- closeParentToken
+                        g <- semiColonToken
+                        s <- getState
+                        if(execOn s) then do
+                          input <- liftIO(getLine)
+                          let strConverted = convertStringToType input e
+                          if(not (compatible (get_type c s, []) (strConverted, []) )) then fail "type error on input"
+                          else do
+                            updateState(symtable_update (c, 0 ,strConverted))
+                            return (a:b:c:d:e:f:[g])
+                          
+                        else return (a:b:c:d:e:f:[g])
 
 convertStringToType :: String -> Token -> Type
 convertStringToType x (Double _) =
@@ -447,7 +501,7 @@ cast (DoubleType v) (Double _) = DoubleType v
 expi :: ParsecT [Token] CCureState IO(Type, [Token])      
 expi = try (do
         x <- intLitToken <|> doubleLitToken <|> boolLitToken
-        return (tokenToType x, [x])) <|> variableParser <|> castParser <|> enclosed_exp
+        return (tokenToType x, [x])) <|> castParser <|> enclosed_exp <|> variableParser
 
 tokenToType :: Token -> Type
 tokenToType (IntLit v _)    = IntType v
@@ -458,12 +512,15 @@ tokenToType _               = undefined
 variableParser :: ParsecT [Token] CCureState IO(Type, [Token])
 variableParser = do
                   id <- idToken
-                  s <- getState
-                  if(execOn s) then
-                    return (getMayb (symtable_get (id, 0) s), [id])
-                  else
-                    return (NULL, [id])
-
+                  try (matrixAcces id) 
+                    <|> 
+                    (do
+                      s <- getState
+                      if(execOn s) then
+                        return (getMayb (symtable_get (id, 0) s), [id])
+                      else
+                        return (NULL, [id]))
+                  
                   
 getMayb :: Maybe a -> a
 getMayb (Just a) = a
@@ -603,10 +660,10 @@ compatible_op (BoolType _, _) (Eq _ ) (BoolType _, _) = True
 compatible_op (BoolType _, _) (Diff _ ) (BoolType _, _) = True
 
 compatible_op (MatrixInt (l1, c1, _), _) (PlusMatrix _) (MatrixInt (l2, c2, _), _) = l1 == l2 && c1 == c2
-compatible_op (MatrixInt (l1, c1, _), _) (MultMatrix _) (MatrixInt (l2, c2, _), _) = c1 == l1
+compatible_op (MatrixInt (l1, c1, _), _) (MultMatrix _) (MatrixInt (l2, c2, _), _) = c1 == l2
 
 compatible_op (MatrixDouble (l1, c1, _), _) (PlusMatrix _) (MatrixDouble (l2, c2, _), _) = l1 == l2 && c1 == c2
-compatible_op (MatrixDouble (l1, c1, _), _) (MultMatrix _) (MatrixDouble (l2, c2, _), _) = c1 == l1
+compatible_op (MatrixDouble (l1, c1, _), _) (MultMatrix _) (MatrixDouble (l2, c2, _), _) = c1 == l2
 
 compatible_op (IntType _, _) (Mult _) (MatrixInt _, _) = True
 compatible_op (MatrixInt _, _) (Mult _) (IntType _, _) = True
@@ -627,6 +684,11 @@ compatible (IntType _, _) (IntType _, _) = True
 compatible (DoubleType _, _) (DoubleType _, _) = True
 compatible (BoolType _, _) (BoolType _, _) = True
 compatible _ _ = False
+
+compatible_matrix :: (Type, [Token]) -> (Type, [Token]) -> Bool
+compatible_matrix (MatrixInt _, _) (IntType _, _) = True
+compatible_matrix (MatrixDouble _, _) (DoubleType _, _) = True
+compatible_matrix _ _ = False
 
 compatible_varDecl :: Token -> (Type, [Token]) -> Bool
 compatible_varDecl (Int _) (IntType _, _) = True
@@ -651,6 +713,12 @@ get_type (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c) = if id1 == 
                                              else get_type (Id id1 p1) (t, a, b, c)
 -- get_type (Id id1 p1) _ = error "o misterio"
 
+get_type_matrix :: Token -> CCureState -> Type
+
+get_type_matrix _ ([], _, _, _) = error "variable not found"
+get_type_matrix (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b, c)
+
 get_bool_value :: Type -> Bool
 get_bool_value (BoolType a) = a
 get_bool_value _ = error "token is not a boolean"
@@ -658,6 +726,22 @@ get_bool_value _ = error "token is not a boolean"
 symtable_insert :: (Token, String, [(Int, Type)]) -> CCureState -> CCureState
 symtable_insert symbol ([], a, b, c)  = ([symbol], a, b, c)
 symtable_insert symbol (symtable, a, b, c) = ((symbol:symtable), a, b, c)
+
+symtable_update_matrix :: (Token, Int, Int, Int, Type) -> CCureState -> CCureState
+symtable_update_matrix a (b, c, d, e) = (symtable_update_matrix_aux a b, c, d, e)  
+
+symtable_update_matrix_aux :: (Token, Int, Int, Int, Type) -> SymTable -> SymTable
+symtable_update_matrix_aux _ [] = error "variable not found"
+symtable_update_matrix_aux (Id id1 p1, depth1, l1, c1, IntType v1) ((Id id2 p2, scop, (depth2, (MatrixInt (l2, c2, m2))):tail):t ) =
+  if((id1, depth1) == (id2, depth2)) then (Id id2 p1, scop, (depth2, (MatrixInt (l2, c2, changeMatrix l1 c1 m2 v1))):tail):t
+  else (Id id2 p2, scop, (depth2, (MatrixInt (l2, c2, m2))):tail) : symtable_update_matrix_aux (Id id1 p1, depth1, l1, c1, IntType v1) t
+symtable_update_matrix_aux (Id id1 p1, depth1, l1, c1, (DoubleType v1)) ((Id id2 p2, scop, (depth2, (MatrixDouble (l2, c2, m2))):tail):t ) =
+  if((id1, depth1) == (id2, depth2)) then (Id id2 p1, scop, (depth2, (MatrixDouble (l2, c2, changeMatrix l1 c1 m2 v1))):tail):t
+  else (Id id2 p2, scop, (depth2, (MatrixDouble (l2, c2, m2))):tail) : symtable_update_matrix_aux (Id id1 p1, depth1, l1, c1, DoubleType v1) t
+symtable_update_matrix_aux (Id id1 p1, depth1, l1, c1, v1) ((Id id2 p2, scop, (depth2, v2):tail):t ) =
+  (Id id2 p2, scop, (depth2, v2):tail) : symtable_update_matrix_aux (Id id1 p1, depth1, l1, c1, v1) t
+symtable_update_matrix_aux _ _ = error "batata"
+
 
 symtable_update :: (Token, Int, Type) -> CCureState -> CCureState
 symtable_update a (b, c, d, e) = (symtable_update_aux a b, c, d, e)

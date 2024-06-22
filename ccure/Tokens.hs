@@ -81,6 +81,16 @@ closeParentToken = tokenPrim show update_pos get_token where
   get_token (CloseParent p) = Just (CloseParent p)
   get_token _           = Nothing
 
+openBrackToken :: ParsecT [Token] st IO (Token)
+openBrackToken = tokenPrim show update_pos get_token where
+  get_token (OpenBrack p) = Just (OpenBrack p)
+  get_token _           = Nothing
+
+closeBrackToken :: ParsecT [Token] st IO (Token)
+closeBrackToken = tokenPrim show update_pos get_token where
+  get_token (CloseBrack p) = Just (CloseBrack p)
+  get_token _           = Nothing
+
 idToken :: ParsecT [Token] st IO (Token)
 idToken = tokenPrim show update_pos get_token where
   get_token (Id x p) = Just (Id x p)
