@@ -30,6 +30,7 @@ type ParsecTokenType = ParsecT [Token] CCureState IO (Token)
 program :: ParsecT [Token] CCureState IO ([Token])
 program = do
             a <- declarations
+            e <- subprogramsDeclarations
             -- Desligar exec para chamar funcao
             updateState(addToScopeStack "program")
             updateState(turnExecOn)
@@ -43,6 +44,44 @@ program = do
             s <- getState
             liftIO (print s)
             return (a ++ [b] ++ c ++ [d])
+
+subprogramsDeclarations :: ParsecT [Token] CCureState IO ([Token])
+subprogramsDeclarations = try (do 
+                a <- subprogramsToken
+                b <- subprograms 
+                c <- endSubprogramsToken
+                return ([a] ++ b ++ [c])) 
+                <|> return []
+
+subprograms :: ParsecT [Token] CCureState IO ([Token])
+subprograms = do
+                first <- subprog
+                next <- remainingSubprograms
+                return (first ++ next)
+
+remainingSubprograms :: ParsecT [Token] CCureState IO ([Token])
+remainingSubprograms = (do
+                        a <- subprog
+                        b <- remainingSubprograms
+                        return (a ++ b)) <|> return ([])
+
+subprog :: ParsecT [Token] CCureState IO ([Token])
+subprog = do
+            a <- functionDecl -- <|> procDecl
+            return a
+
+functionDecl :: ParsecT [Token] CCureState IO ([Token])
+functionDecl = do
+                a <- funToken
+                b <- idToken
+                c <- openParentToken
+                (_, d) <- expression --parDecs -- fazer
+                e <- closeParentToken
+                f <- arrowToken
+                g <- typeToken
+                h <- stmts
+                i <- endFunToken
+                return (a:b:[c] ++ d ++ [e] ++ [f] ++ [g] ++ h ++ [i])
 
 declarations :: ParsecT [Token] CCureState IO ([Token])
 declarations = do
@@ -126,19 +165,20 @@ registerAccess id = do
                       a <- arrowToken
                       b <- idToken
                       s <- getState
-
                       s <- getState
+  
                       if(execOn s) then do
+                        s <- getState
                         let currDepth = getCurrentDepth s
                         let reg = getMayb (symtable_get (id, currDepth) s)
                         -- Verificar se reg é um RegisterType
-                        if(not $ isRegisterType reg) then fail "Invalid register access"
-                        else
+                        if(not $ isRegisterType reg) then do error "Invalid register access"
+                        else do
                           -- Verificar se b é um atributo de reg
-                          if(not $ isRegAttr b reg ) then fail "Invalid attribute access on register"
-                          else
-                            return (getRegAttr b reg, id:a:[b])
-                      else
+                          if(not $ isRegAttr b reg ) then error "Invalid attribute access on register"
+                          else do
+                              return (getRegAttr b reg, id:a:[b])
+                      else do
                         return (NULL, id:a:[b])
 
 registerAssign :: Token -> ParsecT [Token] CCureState IO([Token])
@@ -149,6 +189,7 @@ registerAssign id = do
                       d <- expression
                       e <- semiColonToken
                       s <- getState
+                      
                       if(execOn s) then do
                         let currDepth = getCurrentDepth s
                         let reg = getMayb (symtable_get (id, currDepth) s)
@@ -304,7 +345,7 @@ defaultParser typeid id = do
                               if(not (isInUserTypes typeid s)) then fail "user type not declared"
                               else
                                 -- Check if id is already declared in symtable
-                                if(isInSymTable (id, (getCurrentDepth s)) s) then fail "id already declared"
+                                if(isInSymTable (id, (getCurrentDepth s), getCurrentScope s) s) then fail "id already declared"
                                 else do
                                   let user = getUserType typeid s
                                   let currentDepth =  getCurrentDepth s
@@ -894,27 +935,43 @@ compatible_matrix_assign _ _ _ _ = False
 -- funções para a tabela de símbolos
 
 get_type :: Token -> CCureState -> Type
-get_type _ ([], _, _, _, _, _) = error "variable not found"
-get_type (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d, e) = if id1 == id2 then value
-                                             else get_type (Id id1 p1) (t, a, b, c, d, e)
+get_type _ ([], _, _, _, _, _, _, _) = error "variable not found"
+get_type (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d, e, f, g) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b, c, d, e, f, g)
 -- get_type (Id id1 p1) _ = error "o misterio"
 
 get_type_matrix :: Token -> CCureState -> Type
 
-get_type_matrix _ ([], _, _, _, _, _) = error "variable not found"
-get_type_matrix (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d, e) = if id1 == id2 then value
-                                             else get_type (Id id1 p1) (t, a, b, c, d, e)
+get_type_matrix _ ([], _, _, _, _, _, _, _) = error "variable not found"
+get_type_matrix (Id id1 p1) (  (Id id2 _, _, (_, value):tail):t , a, b, c, d, e, f, g) = if id1 == id2 then value
+                                             else get_type (Id id1 p1) (t, a, b, c, d, e, f, g)
 
 get_bool_value :: Type -> Bool
 get_bool_value (BoolType a) = a
 get_bool_value _ = error "token is not a boolean"
 
 symtable_insert :: (Token, String, [(Int, Type)]) -> CCureState -> CCureState
-symtable_insert symbol ([], a, b, c, d, e)  = ([symbol], a, b, c, d, e)
-symtable_insert symbol (symtable, a, b, c, d, e) = ((symbol:symtable), a, b, c, d, e)
+symtable_insert symbol (symt, a, b, c, d, e, f, g)  = (symtable_insert_aux symbol symt, a, b, c, d, e, f, g)
+
+symtable_insert_aux :: (Token, String, [(Int, Type)]) -> SymTable -> SymTable
+symtable_insert_aux a [] = [a]
+symtable_insert_aux (Id id1 p1, scop1, [value1]) ((Id id2 p2, scop2, value2):tail)
+  = if(conseguiInserir) then changedList
+    else (Id id1 p1, scop1, [value1]):(Id id2 p2, scop2, value2):tail
+    where 
+      (conseguiInserir, changedList) = insertAux (Id id1 p1, scop1, [value1]) ((Id id2 p2, scop2, value2):tail)
+
+insertAux :: (Token, String, [(Int, Type)]) -> SymTable -> (Bool, SymTable)
+insertAux (Id id1 p1, scop1, [value1]) [] = (False, [])
+insertAux (Id id1 p1, scop1, [value1]) ((Id id2 p2, scop2, value2):tail)
+  = if ((id1,scop1) == (id2, scop2)) then (True, (Id id1 p1, scop1, value1:value2):tail)
+    else do
+      let (conseguiInserir, changedList) = insertAux (Id id1 p1, scop1, [value1]) tail
+      (conseguiInserir, (Id id2 p2, scop2, value2):changedList)
+
 
 symtable_update_matrix :: (Token, Int, Int, Int, Type) -> CCureState -> CCureState
-symtable_update_matrix a (b, c, d, e, f, g) = (symtable_update_matrix_aux a b, c, d, e, f, g)
+symtable_update_matrix a (b, c, d, e, f, g, h, i) = (symtable_update_matrix_aux a b, c, d, e, f, g, h, i)
 
 symtable_update_matrix_aux :: (Token, Int, Int, Int, Type) -> SymTable -> SymTable
 symtable_update_matrix_aux _ [] = error "variable not found"
@@ -928,9 +985,8 @@ symtable_update_matrix_aux (Id id1 p1, depth1, l1, c1, v1) ((Id id2 p2, scop, (d
   (Id id2 p2, scop, (depth2, v2):tail) : symtable_update_matrix_aux (Id id1 p1, depth1, l1, c1, v1) t
 symtable_update_matrix_aux _ _ = error "batata"
 
-
 symtable_update :: (Token, Int, Type) -> CCureState -> CCureState
-symtable_update a (b, c, d, e, f, g) = (symtable_update_aux a b, c, d, e, f, g)
+symtable_update a (b, c, d, e, f, g, h, i) = (symtable_update_aux a b, c, d, e, f, g, h, i)
 
 symtable_update_aux :: (Token, Int, Type) -> SymTable -> SymTable
 symtable_update_aux _ [] = fail "variable not found"
@@ -940,7 +996,7 @@ symtable_update_aux (Id id1 p1, depth1, v1) ((Id id2 p2, scop, (depth2, v2):tail
 
 -- Percorre a lista enquanto String for igual a escopo. Depois para
 symtable_remove_scope :: String -> CCureState -> CCureState
-symtable_remove_scope a (b, c, d, e, f, g) = (symtable_remove_scope_aux a b, c, d, e, f, g)
+symtable_remove_scope a (b, c, d, e, f, g, h, i) = (symtable_remove_scope_aux a b, c, d, e, f, g, h, i)
 
 symtable_remove_scope_aux :: String -> SymTable -> SymTable
 symtable_remove_scope_aux _ [] = []
@@ -958,7 +1014,7 @@ symtable_remove_scope_aux a ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
 --                                else (id2, v2) : symtable_remove_aux (id1, v1) t
 
 symtable_get :: (Token, Int) -> CCureState -> Maybe Type
-symtable_get (a, d) (b, _, _, _, _, _) = symtable_get_aux (a, d) b
+symtable_get (a, d) (b, _, _, _, _, _, _, _) = symtable_get_aux (a, d) b
 
 symtable_get_aux :: (Token, Int) -> SymTable -> Maybe Type
 symtable_get_aux _ [] = error "variable not found"
@@ -967,37 +1023,37 @@ symtable_get_aux (Id id1 p1, depth1) ((Id id2 p2, scop, (depth2, v2):tail):t   )
                             else symtable_get_aux (Id id1 p1, depth1) t
 
 symtable_update_reg_attr :: (Token, Int, Token, Type) -> CCureState -> CCureState
-symtable_update_reg_attr a (b, c, d, e, f, g) = (symtable_update_reg_attr_aux a b, c, d, e, f, g)
+symtable_update_reg_attr a (b, c, d, e, f, g, h, i) = (symtable_update_reg_attr_aux a b, c, d, e, f, g, h, i)
 
 symtable_update_reg_attr_aux :: (Token, Int, Token, Type) -> SymTable -> SymTable
 symtable_update_reg_attr_aux _ [] = error "variable not found"
 symtable_update_reg_attr_aux (Id idTypeToInsert pTypeToInsert, depthTypeToInsert, Id idAttrToupdate pAttrToupdate, vAttrToupdate) ((Id id p, scop, (depth, RegisterType (a, b)):tail):t   ) =
                                 if ((idTypeToInsert, depthTypeToInsert) == (id, depth)) then (Id id p, scop, (depth, RegisterType (a, symtable_update_reg_attr_aux_aux (Id idAttrToupdate pAttrToupdate, vAttrToupdate) b)):tail):t
                                 else (Id id p, scop, (depth, RegisterType (a, b)):tail) : symtable_update_reg_attr_aux (Id idTypeToInsert pTypeToInsert, depthTypeToInsert, Id idAttrToupdate pAttrToupdate, vAttrToupdate) t
+symtable_update_reg_attr_aux (Id idTypeToInsert pTypeToInsert, depthTypeToInsert, Id idAttrToupdate pAttrToupdate, vAttrToupdate) ((Id id p, scop, (depth, v):tail):t   ) =
+                                (Id id p, scop, (depth, v):tail) : symtable_update_reg_attr_aux (Id idTypeToInsert pTypeToInsert, depthTypeToInsert, Id idAttrToupdate pAttrToupdate, vAttrToupdate) t
 
 symtable_update_reg_attr_aux_aux :: (Token, Type) -> [(Token, Type)] -> [(Token, Type)]
 symtable_update_reg_attr_aux_aux _ [] = error "variable not found"
 symtable_update_reg_attr_aux_aux (Id idToInsert pToInsert, vToInsert) ((Id id p, v):t) =
                                 if (idToInsert == id) then (Id id p, vToInsert):t
                                 else (Id id p, v):symtable_update_reg_attr_aux_aux (Id idToInsert pToInsert, vToInsert) t
+ 
+isInSymTable :: (Token, Int, String) -> CCureState -> Bool
+isInSymTable (a, d, scopToSearch) (b, _, _, _, _, _, _, _) = isInSymTable_aux (a, d, getLastScop scopToSearch) b
 
-
-
-isInSymTable :: (Token, Int) -> CCureState -> Bool
-isInSymTable (a, d) (b, _, _, _, _, _) = isInSymTable_aux (a, d) b
-
-isInSymTable_aux :: (Token, Int) -> SymTable -> Bool
+isInSymTable_aux :: (Token, Int, String) -> SymTable -> Bool
 isInSymTable_aux _ [] = False
-isInSymTable_aux (Id id1 p1, depth1) ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
-                            ((id1, depth1) == (id2, depth2)) || isInSymTable_aux (Id id1 p1, depth1) t
+isInSymTable_aux (Id id1 p1, depth1, scopToSearch) ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
+                            ((id1, depth1, scopToSearch) == (id2, depth2, getLastScop scop)) || isInSymTable_aux (Id id1 p1, depth1, scopToSearch) t
 
 -- invocação do parser para o símbolo de partida 
 
 parser :: [Token] -> IO (Either ParseError [Token])
-parser tokens = runParserT program ([], [], [], 0, [], True) "Error message" tokens
+parser tokens = runParserT program ([], [], [], 0, [], [], [], True) "Error message" tokens
 
 main :: IO ()
-main = case unsafePerformIO (parser (getTokens "problemas/problema3.ccr")) of
+main = case unsafePerformIO (parser (getTokens "problemas/problema4.ccr")) of
             { Left err -> print err;
               Right ans -> print "Program ended successfully!"
             }

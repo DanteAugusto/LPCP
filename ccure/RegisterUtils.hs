@@ -13,10 +13,10 @@ import Data.List
 -- userTypeInsert a
 
 insertUserType :: Token -> CCureState -> CCureState
-insertUserType (TypeId id p) (a, b, c, d, e, f) = (a, b, c, d, (TypeId id p, []):e, f)
+insertUserType (TypeId id p) (a, b, c, d, e, f, g, h) = (a, b, c, d, (TypeId id p, []):e, f, g, h)
 
 addAttrToUserTypes :: Token -> (Token, Type) -> CCureState -> CCureState
-addAttrToUserTypes id a (b, c, d, e, f, g) = (b, c, d, e, addAttrToUserTypesAux id a f, g)
+addAttrToUserTypes id a (b, c, d, e, f, g, h, i) = (b, c, d, e, addAttrToUserTypesAux id a f, g, h, i)
 
 addAttrToUserTypesAux :: Token -> (Token, Type) -> UserTypes -> UserTypes
 addAttrToUserTypesAux _ _ [] = fail "user type not found"
@@ -28,7 +28,7 @@ addAttrToUserTypesAux (TypeId idType pType) (Id idAtt pAtt, vAtt) ( (TypeId id1 
     else (TypeId id1 p1, [] ):addAttrToUserTypesAux (TypeId idType pType) (Id idAtt pAtt, vAtt) t
 
 getUserType :: Token -> CCureState -> Type
-getUserType (TypeId id p) (_, _, _, _, e, _) = getUserTypeAux (TypeId id p) e
+getUserType (TypeId id p) (_, _, _, _, e, _, _, _) = getUserTypeAux (TypeId id p) e
 
 getUserTypeAux :: Token -> UserTypes -> Type
 getUserTypeAux _ [] = error "user type not found"
@@ -55,7 +55,7 @@ getRegAttrAux _ [] = error "attribute not found"
 getRegAttrAux (Id id p) ( (Id id1 p1, v):t ) = if id == id1 then v else getRegAttrAux (Id id p) t
 
 isInUserTypes :: Token -> CCureState -> Bool
-isInUserTypes (TypeId id p) (_, _, _, _, e, _) = isInUserTypesAux (TypeId id p) e
+isInUserTypes (TypeId id p) (_, _, _, _, e, _, _, _) = isInUserTypesAux (TypeId id p) e
 
 isInUserTypesAux :: Token -> UserTypes -> Bool
 isInUserTypesAux _ [] = False

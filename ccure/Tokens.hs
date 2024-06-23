@@ -151,6 +151,21 @@ defaultToken = tokenPrim show update_pos get_token where
   get_token (Default p) = Just (Default p)
   get_token _         = Nothing
 
+funToken :: ParsecT [Token] st IO (Token)
+funToken = tokenPrim show update_pos get_token where
+  get_token (Fun p) = Just (Fun p)
+  get_token _       = Nothing
+
+endFunToken :: ParsecT [Token] st IO (Token)
+endFunToken = tokenPrim show update_pos get_token where
+  get_token (EndFun p) = Just (EndFun p)
+  get_token _          = Nothing
+
+returnToken :: ParsecT [Token] st IO (Token)
+returnToken = tokenPrim show update_pos get_token where
+  get_token (Return p) = Just (Return p)
+  get_token _          = Nothing
+
 putsToken :: ParsecT [Token] st IO (Token)
 putsToken = tokenPrim show update_pos get_token where
   get_token (Puts p) = Just (Puts p)
