@@ -46,6 +46,17 @@ type ScopeStack = [String]
 type LoopStack = [LoopStatus]
 type UserTypes = [(Token, [(Token, Type)])]
 
+-- Lista de:
+-- Nome da funcao, pc, lista de parametros
+-- type UserProcedures = [(Token, [Token], [(Token, Type)])]
+
+-- Lista de:
+-- Nome da funcao, pc, tipo de retorno, lista de parametros
+-- type UserFunctions = [(Token, [Token], Type, [(Token, Type)])]
+
+-- type StackWhereToReturn = [[Token]]
+
+-- type CCureState = (SymTable, ScopeStack, LoopStack, DynamicDepth, UserTypes, UserProcedures, UserFunctions, StackWhereToReturn, ExAct)
 type CCureState = (SymTable, ScopeStack, LoopStack, DynamicDepth, UserTypes, ExAct)
 
 -- funções auxiliares para o CCureState
