@@ -5,6 +5,7 @@
 {-# HLINT ignore "Redundant bracket" #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# HLINT ignore "Use <$>" #-}
+{-# HLINT ignore "Use bimap" #-}
 module Main (main) where
 
 import Lexer
@@ -12,6 +13,7 @@ import State
 import Tokens
 import MatrixUtils
 import RegisterUtils
+import SubprogramUtils
 import Text.Read
 import Text.Parsec
 import Control.Monad.IO.Class
@@ -30,6 +32,8 @@ type ParsecTokenType = ParsecT [Token] CCureState IO (Token)
 program :: ParsecT [Token] CCureState IO ([Token])
 program = do
             a <- declarations
+
+            updateState(turnExecOff)
             e <- subprogramsDeclarations
             -- Desligar exec para chamar funcao
             updateState(addToScopeStack "program")
@@ -75,13 +79,55 @@ functionDecl = do
                 a <- funToken
                 b <- idToken
                 c <- openParentToken
-                (_, d) <- expression --parDecs -- fazer
+                d <- parDecs --parDecs -- fazer
                 e <- closeParentToken
                 f <- arrowToken
-                g <- typeToken
+                g <- typeToken <|> typeIdToken
                 h <- stmts
                 i <- endFunToken
-                return (a:b:[c] ++ d ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+
+                s <- getState
+                
+                if(isRegister g) then do
+                  if(not $ isInUserTypes g s) then fail "Invalid return type in function declaration"
+                  else do
+                    updateState(insertUserFunction (b, h ++ [i], getUserType g s, fst d))
+                    return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                else do
+                  updateState(insertUserFunction (b, h ++ [i], tokenToType2 g, fst d))
+                  return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+
+isRegister :: Token -> Bool 
+isRegister (TypeId id p) = True
+isRegister _ = False
+
+parDecs :: ParsecT [Token] CCureState IO ([(Token, Type)], [Token])
+parDecs = try (do
+              a <- parDec
+              b <- remainingParDecs
+              return ((fst a) ++ (fst b), (snd a) ++ (snd b))) 
+              <|> return ([], [])
+
+remainingParDecs :: ParsecT [Token] CCureState IO ([(Token, Type)],[Token])
+remainingParDecs = (do
+                    _ <- commaToken
+                    a <- parDec
+                    b <- remainingParDecs
+                    return ((fst a) ++ (fst b), (snd a) ++ (snd b))) 
+                    <|> return ([], [])
+
+parDec :: ParsecT [Token] CCureState IO ([(Token, Type)],[Token])
+parDec = do
+            a <- typeToken <|> typeIdToken
+            b <- idToken 
+
+            s <- getState
+            if(isRegister a) then do
+              if(not $ isInUserTypes a s) then fail "Invalid param type in function declaration"
+              else 
+                return ([(b, getUserType a s)], [a, b])
+            else 
+              return ([(b, tokenToType2 a)], [a, b])
 
 declarations :: ParsecT [Token] CCureState IO ([Token])
 declarations = do
@@ -724,8 +770,15 @@ tokenToType :: Token -> Type
 tokenToType (IntLit v _)    = IntType v
 tokenToType (DoubleLit v _) = DoubleType v
 tokenToType (BoolLit v _)   = BoolType v
-tokenToType (StringLit v _)   = StringType v
+tokenToType (StringLit v _) = StringType v
 tokenToType _               = undefined
+
+tokenToType2 :: Token -> Type
+tokenToType2 (Int _)    = IntType 0
+tokenToType2 (Double _) = DoubleType 0.0
+tokenToType2 (Bool _)   = BoolType True
+tokenToType2 (Str _)    = StringType " "
+tokenToType2 _          = undefined
 
 compareTypeIdTokens :: Token -> Token -> Bool
 compareTypeIdTokens (TypeId x _) (TypeId y _) = x == y

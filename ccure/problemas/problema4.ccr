@@ -8,6 +8,12 @@ typeDeclarations
 
 endTypeDeclarations
 
+subprograms
+    fun f(int c, int a, Abacate x) -> Abacate 
+        puts(a);
+    endFun
+endSubprograms
+
 program
     Abacate a = Default(Abacate);
     Abacate b = Default(Abacate);
