@@ -23,7 +23,7 @@ import Text.Read.Lex
 import Data.Maybe
 import Distribution.Compat.Lens (_1)
 import System.IO
-import Language.Haskell.TH.PprLib (arrow)
+import System.Environment
 
 -- alias para tipos usados
 type ParsecType = ParsecT [Token] CCureState IO(Type, [Token])
@@ -1126,8 +1126,16 @@ isInSymTable_aux (Id id1 p1, depth1, scopToSearch) ((Id id2 p2, scop, (depth2, v
 parser :: [Token] -> IO (Either ParseError [Token])
 parser tokens = runParserT program ([], [], [], 0, [], [], [], True) "Error message" tokens
 
+-- main :: IO ()
+-- main = case unsafePerformIO (parser (getTokens "problemas/problema4.ccr")) of
+--             { Left err -> print err;
+--               Right ans -> print "Program ended successfully!"
+--             }
+
 main :: IO ()
-main = case unsafePerformIO (parser (getTokens "problemas/problema4.ccr")) of
-            { Left err -> print err;
-              Right ans -> print "Program ended successfully!"
-            }
+main = (do  args <- getArgs
+            case unsafePerformIO( parser (getTokens (head args))) of
+                      { Left err -> print err;
+                        Right ans -> print "Program ended successfully!"
+                      }
+          )

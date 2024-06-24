@@ -12,8 +12,6 @@ subprograms
     fun f(int b, int a, Abacate x) -> Abacate 
         puts(a + b);
         puts("\n");
-
-        return x;
     endFun
 endSubprograms
 
