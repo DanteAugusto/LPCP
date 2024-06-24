@@ -381,9 +381,28 @@ registerDecl = do
               a <- typeIdToken
               b <- idToken
               c <- assignToken
-              d <- defaultParser a b
-              e <- semiColonToken
-              return (a:b:[c] ++ d ++ [e])
+              try (do
+                  d <- defaultParser a b
+                  e <- semiColonToken
+                  return (a:b:[c] ++ d ++ [e]))
+                  <|> do
+                      d <- expression
+                      e <- semiColonToken
+                      s <- getState
+                      if(execOn s) then do
+                        if(not $ isInUserTypes a s) then fail "Invalid register type"
+                        else do
+
+                          -- Check if d is compatible with a
+                          if(not $ compatible (getUserType a s, []) d) then fail "type error on register declaration"
+                          else do
+
+                            let valToInsert = (fst d)
+                            let currentDepth =  getCurrentDepth s
+                            updateState(symtable_insert (b, getCurrentScope s, [(currentDepth, valToInsert)]))
+                            return (a:b:[c] ++ (snd d) ++ [e])
+                      else
+                        return (a:b:[c] ++ (snd d) ++ [e])
 
 defaultParser :: Token -> Token -> ParsecT [Token] CCureState IO([Token])
 defaultParser typeid id = do
