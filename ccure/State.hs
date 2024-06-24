@@ -81,6 +81,11 @@ addToScopeStack :: String -> CCureState -> CCureState
 addToScopeStack newScope (a, top:tail, b, c, d, e, f, g)  = (a, (newScope ++ ['#'] ++ top):top:tail, b, c, d, e, f, g)
 addToScopeStack newScope (a, [], b, c, d, e, f, g)  = (a, [newScope], b, c, d, e, f, g)
 
+pushNewScopeStack :: String -> CCureState -> CCureState
+pushNewScopeStack newScope (a, top:tail, b, c, d, e, f, g)  = (a, newScope:top:tail, b, c, d, e, f, g)
+pushNewScopeStack newScope (a, [], b, c, d, e, f, g)  = (a, [newScope], b, c, d, e, f, g)
+
+
 getCurrentScope :: CCureState -> String
 getCurrentScope (_, top:tail, _, _, _, _, _, _) = top
 getCurrentScope _ = error "trying to access unexistent scope"

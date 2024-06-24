@@ -439,7 +439,7 @@ stmts = do
           return (first ++ next)
 
 stmt :: ParsecT [Token] CCureState IO([Token])
-stmt = try varDecl <|> matrixDecl <|> registerDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> breakStmt
+stmt = try varDecl <|> matrixDecl <|> registerDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> breakStmt <|> returnStmt
 
 remainingStmts :: ParsecT [Token] CCureState IO([Token])
 remainingStmts = (do
@@ -634,6 +634,31 @@ breakStmt = do
 
               return (a:[b])
 
+returnStmt :: ParsecT [Token] CCureState IO([Token])
+returnStmt = do
+              a <- returnToken
+              b <- expression
+              c <- semiColonToken
+              s <- getState
+              if(execOn s) then do
+                -- liftIO (print "return")
+                -- liftIO (print s)
+                -- liftIO (print "getejhtiuahetrfwaiehf")
+                -- liftIO (print (getCurrentScope s))
+                -- liftIO (print "????????????")
+                if(getLastScop (getCurrentScope s) == "program") then fail "return statement out of function"
+                else do
+                  let ret = getReturnType (getCurrentScope s) s
+                  if(not (compatible b (ret, []))) then fail "type error on return"
+                  else do
+                    updateState(symtable_update (Id "$ret" (0, 0), getCurrentDepth s, fst b))
+                    updateState(turnExecOff)
+                    return (a:(snd b) ++ [c])
+              else
+                return (a:(snd b) ++ [c])
+
+getReturnType :: String -> CCureState -> Type
+getReturnType scope s = getMayb (symtable_get (Id "$ret" (0, 0), getCurrentDepth s) s)
 
 assign :: ParsecT [Token] CCureState IO([Token])
 assign = do
@@ -810,8 +835,8 @@ functionCall id = do
                       if(not $ compatibleArgs (fst b) func) then fail "Invalid arguments on function call"
                       else do
                         nextStmts <- getInput
-                        liftIO (print "pinto")
-                        liftIO (print nextStmts)
+                        -- liftIO (print "pinto")
+                        -- liftIO (print nextStmts)
                         setInput(getBodyFromFunc func ++ nextStmts)
 
                         returnFromFunc <- execFunction func (fst b)
@@ -847,7 +872,7 @@ execFunction :: UserFunction -> [Type] -> ParsecT [Token] CCureState IO(Type)
 execFunction (name, pc, ret, formalArgs) realArgs = 
     do
       updateState(addDepth)
-      updateState(addToScopeStack $ getStringFromIdToken name)
+      updateState(pushNewScopeStack $ getStringFromIdToken name)
       s <- getState
 
       let argsToInsert = makeArgsToInsert formalArgs realArgs (getStringFromIdToken name) (getCurrentDepth s)
@@ -866,6 +891,7 @@ execFunction (name, pc, ret, formalArgs) realArgs =
           updateState(symtable_remove_scope (getCurrentScope s))
           updateState(removeDepth)
           updateState(removeFromScopeStack)
+          updateState(turnExecOn)
           return (retornou)
           
 
