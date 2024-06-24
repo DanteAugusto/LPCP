@@ -1,33 +1,108 @@
 typeDeclarations
 
-    register Abacate
-        int a = 0;
-        double j = 98.0 + 2.0;
-        string ad = "hoohohoho";
+    register Rational_t
+        int numerador = 0;
+        int denominador = 1;
     endRegister
 
 endTypeDeclarations
 
 subprograms
-    fun f(int b, int a, Abacate x) -> int 
-        puts(a + b);
-        puts("\n");
+    fun build_rational(int a, int b) -> Rational_t
+        Rational_t ret = Default(Rational_t);
+        ret->numerador = a;
+        ret->denominador = b;
 
-        return a**b;
+        return ret;
     endFun
+
+    fun is_same_rational(Rational_t a, Rational_t b) -> bool
+
+        return (cast(a->numerador, double) / cast(a->denominador, double)) == (cast(b->numerador, double) / cast(b->denominador, double));
+    endFun
+
+    fun sum_rationals(Rational_t a, Rational_t b) -> Rational_t
+        
+        Rational_t ret = Default(Rational_t);
+        ret->numerador = a->numerador * b->denominador + b->numerador * a->denominador;
+        ret->denominador = a->denominador * b->denominador;
+
+        return ret;
+    endFun
+
+    fun neg_rational(Rational_t a) -> Rational_t
+        
+        Rational_t ret = Default(Rational_t);
+        ret->numerador = -a->numerador; 
+        ret->denominador = a->denominador;
+
+        return ret;
+    endFun
+
+    fun sub_rationals(Rational_t a, Rational_t b) -> Rational_t
+        
+        Rational_t ret = Default(Rational_t);
+        ret->numerador = a->numerador * b->denominador - b->numerador * a->denominador;
+        ret->denominador = a->denominador * b->denominador;
+
+        return ret;
+    endFun
+
+    fun mult_rationals(Rational_t a, Rational_t b) -> Rational_t
+        
+        Rational_t ret = Default(Rational_t);
+        ret->numerador = a->numerador * b->numerador;
+        ret->denominador = a->denominador * b->denominador;
+
+        return ret;
+    endFun
+
+    fun inv_rational(Rational_t a) -> Rational_t
+        
+        Rational_t ret = Default(Rational_t);
+        ret->numerador = a->denominador;
+        ret->denominador = a->numerador;
+
+        return ret;
+    endFun
+
+    fun div_rationals(Rational_t a, Rational_t b) -> Rational_t
+
+        -- Divisao de dois reationals
+        Rational_t ret = Default(Rational_t);
+        ret->numerador = a->numerador * b->denominador;
+        ret->denominador = a->denominador * b->numerador;
+        --return mult_rationals(a, inv_rational(b));
+
+        return ret;
+
+
+        
+        
+    endFun
+
+    
+
 endSubprograms
 
 program
-    Abacate a = Default(Abacate);
-    Abacate b = Default(Abacate);
     
-    int c = f(3, 5, a);
-    
-    puts(c);
-    puts("eh isso ai pessoal\n");
-    
-    puts("putz1\n");
-    a->a = 23;
-    puts(a->a);
-    puts("\n");
+    puts("Teste de Racionais\n");
+
+    Rational_t a = Default(Rational_t);
+    Rational_t b = Default(Rational_t);
+    Rational_t c = Default(Rational_t);
+
+    a->numerador = 1;
+    a->denominador = 2;
+
+    b->numerador = 1;
+    b->denominador = 3;
+
+    puts("Soma de 1/2 com 1/3\n");
+    puts(div_rationals(a, b));
+    puts("\n\n\n\n\n");
+
+
+
 end

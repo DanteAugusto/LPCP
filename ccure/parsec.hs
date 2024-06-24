@@ -775,10 +775,14 @@ castParser = do
               c <- commaToken
               t <- numTypeToken
               closeP <- closeParentToken
-              if (not (canCast valExp t)) then fail "cast error"
+              s <- getState
+              if(execOn s) then do
+                if (not (canCast valExp t)) then fail "cast error"
+                else
+                  do
+                    return (cast valExp t, ct:[openP] ++ exp ++ c:t:[closeP])
               else
-                do
-                  return (cast valExp t, ct:[openP] ++ exp ++ c:t:[closeP])
+                return (NULL, ct:[openP] ++ exp ++ c:t:[closeP])
 
 canCast :: Type -> Token -> Bool
 canCast (IntType _) (Int _)       = True
