@@ -59,20 +59,23 @@ subprograms
 
     fun inv_rational(Rational_t a) -> Rational_t
         
+        puts("Jorge2??\n");
         Rational_t ret = Default(Rational_t);
         ret->numerador = a->denominador;
         ret->denominador = a->numerador;
 
+        puts("Jorge3??\n");
         return ret;
     endFun
 
     fun div_rationals(Rational_t a, Rational_t b) -> Rational_t
 
         -- Divisao de dois reationals
-        Rational_t ret = Default(Rational_t);
-        ret->numerador = a->numerador * b->denominador;
-        ret->denominador = a->denominador * b->numerador;
-        --return mult_rationals(a, inv_rational(b));
+        --Rational_t ret = Default(Rational_t);
+        --ret->numerador = a->numerador * b->denominador;
+        --ret->denominador = a->denominador * b->numerador;
+        puts("Jorge1??\n");
+        return mult_rationals(a, inv_rational(b));
 
         return ret;
 

@@ -24,6 +24,7 @@ import Data.Maybe
 import Distribution.Compat.Lens (_1)
 import System.IO
 import System.Environment
+import Distribution.Compat.Directory (listDirectory)
 
 -- alias para tipos usados
 type ParsecType = ParsecT [Token] CCureState IO(Type, [Token])
@@ -92,9 +93,15 @@ functionDecl = do
                 if(isRegister g) then do
                   if(not $ isInUserTypes g s) then fail "Invalid return type in function declaration"
                   else do
+                    -- liftIO (print "quem eh o body da funcao cara")
+                    -- liftIO (print $ h ++ [i])
+                    -- liftIO (print "obriado raleu cara")
                     updateState(insertUserFunction (b, h ++ [i], getUserType g s, fst d))
                     return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
                 else do
+                  -- liftIO (print "quem eh o body da funcao cara")
+                  -- liftIO (print $ h ++ [i])
+                  -- liftIO (print "obriado raleu cara")
                   updateState(insertUserFunction (b, h ++ [i], tokenToType2 g, fst d))
                   return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
 
@@ -111,10 +118,10 @@ parDecs = try (do
 
 remainingParDecs :: ParsecT [Token] CCureState IO ([(Token, Type)],[Token])
 remainingParDecs = (do
-                    _ <- commaToken
+                    comma <- commaToken
                     a <- parDec
                     b <- remainingParDecs
-                    return ((fst a) ++ (fst b), (snd a) ++ (snd b))) 
+                    return ((fst a) ++ (fst b), [comma] ++ (snd a) ++ (snd b))) 
                     <|> return ([], [])
 
 parDec :: ParsecT [Token] CCureState IO ([(Token, Type)],[Token])
@@ -553,8 +560,12 @@ whileStmt = do
               -- liftIO(print s)
               pc <- getInput
               -- liftIO( print pc )
+              -- liftIO(print "oi e us ou um while")
               a <- whileToken
+              -- liftIO(print "oi e us ou um while 2")
+              -- liftIO(print $ getTopScope s)
               b <- enclosed_exp
+              -- liftIO(print "tchau")
 
               s <- getState
 
@@ -570,7 +581,7 @@ whileStmt = do
 
 
                     s <- getState
-                    -- Se apos os stmts o exec tiver off, leu um break ou continue
+                    -- Se apos os stmts o exec tiver off, leu um break ou continue ou return
                     if(not (execOn s)) then do
                       -- Se foi um break, acaba o loop
                       if((getCurrentLoopStatus s) == BREAK) then do
@@ -581,6 +592,11 @@ whileStmt = do
                         updateState(removeFromLoopStack)
                         return ([a] ++ (snd b) ++ c ++ [d])
                       else do
+                        -- Se foi um return, acaba o loop
+                        s <- getState
+                        updateState(symtable_remove_scope (getCurrentScope s))
+                        updateState(removeFromScopeStack)
+                        updateState(removeFromLoopStack)
                         return ([a] ++ (snd b) ++ c ++ [d])
                       -- Se foi um continue, continua o loop
                     else do
@@ -759,10 +775,12 @@ factor = (do
 
 enclosed_exp :: ParsecT [Token] CCureState IO(Type, [Token])
 enclosed_exp = do
+                -- liftIO(print "antes enclosed")
                 a <- openParentToken
-                b <- expression
+                -- liftIO(print "depois enclosed")
+                (bType, bTokens) <- expression
                 c <- closeParentToken
-                return b
+                return (bType, a:bTokens ++ [c])
 
 numTypeToken :: ParsecT [Token] CCureState IO(Token)
 numTypeToken = try intToken <|> doubleToken
@@ -842,7 +860,9 @@ functionCall id = do
                         -- liftIO (print "pinto")
                         -- liftIO (print nextStmts)
                         setInput(getBodyFromFunc func ++ nextStmts)
-
+                        -- liftIO (print "quem sao meus args cara")
+                        -- liftIO (print (fst b))
+                        -- liftIO (print "obriggado cara")
                         returnFromFunc <- execFunction func (fst b)
 
                         return (returnFromFunc, id:a:(snd b) ++ [c])
@@ -909,10 +929,10 @@ args = try (do
 
 remainingArgs :: ParsecT [Token] CCureState IO([Type], [Token])
 remainingArgs = (do
-                  _ <- commaToken
+                  comma <- commaToken
                   a <- expression
                   b <- remainingArgs
-                  return ((fst a):(fst b), (snd a) ++ (snd b))) 
+                  return ((fst a):(fst b), [comma] ++ (snd a) ++ (snd b))) 
                   <|> return ([], [])
 
 variableParser :: ParsecT [Token] CCureState IO(Type, [Token])
@@ -1104,8 +1124,11 @@ symtable_remove_scope a (b, c, d, e, f, g, h, i) = (symtable_remove_scope_aux a 
 
 symtable_remove_scope_aux :: String -> SymTable -> SymTable
 symtable_remove_scope_aux _ [] = []
-symtable_remove_scope_aux a ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
+symtable_remove_scope_aux a ((Id id2 p2, scop, [(depth2, v2)]):t   ) =
                             if(a == scop) then symtable_remove_scope_aux a t
+                            else (Id id2 p2, scop, [(depth2, v2)]) : t
+symtable_remove_scope_aux a ((Id id2 p2, scop, (depth2, v2):tail):t   ) =
+                            if(a == scop) then (Id id2 p2, scop, tail) : symtable_remove_scope_aux a t
                             else (Id id2 p2, scop, (depth2, v2):tail) : t
 
 -- symtable_remove :: (Token,Token) -> CCureState -> CCureState
