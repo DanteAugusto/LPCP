@@ -8,6 +8,7 @@
 {-# HLINT ignore "Use bimap" #-}
 module Main (main) where
 
+import Compatibles
 import Lexer
 import State
 import Tokens
@@ -495,6 +496,10 @@ getValFromType :: Type -> Int
 getValFromType (IntType v) = v
 getValFromType _           = 0
 
+getStringFromIdToken :: Token -> String
+getStringFromIdToken (Id x _) = x
+getStringFromIdToken _        = ""
+
 readStup :: ParsecT [Token] CCureState IO([Token])
 readStup = do
               a <- stupToken
@@ -784,11 +789,108 @@ compareTypeIdTokens :: Token -> Token -> Bool
 compareTypeIdTokens (TypeId x _) (TypeId y _) = x == y
 compareTypeIdTokens _ _ = False
 
+functionCall :: Token -> ParsecT [Token] CCureState IO(Type, [Token])
+functionCall id = do
+                  a <- openParentToken
+                  b <- args
+                  c <- closeParentToken
+                  s <- getState
+
+                  -- liftIO (print "antes do exec")
+
+                  if(execOn s) then do
+                    
+                    -- liftIO (print "exec on")
+                    if(not $ isInUserFunctions id s) then fail "Invalid function call"
+                    else do
+                      
+                      -- liftIO (print "bilu teteia")
+                      let func = getUserFunc id s
+                      
+                      if(not $ compatibleArgs (fst b) func) then fail "Invalid arguments on function call"
+                      else do
+                        nextStmts <- getInput
+                        liftIO (print "pinto")
+                        liftIO (print nextStmts)
+                        setInput(getBodyFromFunc func ++ nextStmts)
+
+                        returnFromFunc <- execFunction func (fst b)
+
+                        return (returnFromFunc, id:a:(snd b) ++ [c])
+
+
+                      --return (getReturnType func, id:a ++ (snd b) ++ c)
+                  else
+                    return (NULL, id:a:(snd b) ++ [c])
+
+
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
+
+makeArgsToInsert :: [(Token, Type)] -> [Type] -> String -> Int -> [(Token, String, [(Int, Type)])]
+makeArgsToInsert [] [] _ _ = []
+makeArgsToInsert ((id, t):xs) (y:ys) name depth = (id, name, [(depth, y)]) : makeArgsToInsert xs ys name depth
+
+
+-- (Token, Int, String)
+
+insertArgs :: [(Token, String, [(Int, Type)])] -> CCureState -> CCureState
+insertArgs [] s = s
+insertArgs ((id, name, types):xs) s = insertArgs xs (symtable_insert (id, name, types) s)
+
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
+
+execFunction :: UserFunction -> [Type] -> ParsecT [Token] CCureState IO(Type)
+execFunction (name, pc, ret, formalArgs) realArgs = 
+    do
+      updateState(addDepth)
+      updateState(addToScopeStack $ getStringFromIdToken name)
+      s <- getState
+
+      let argsToInsert = makeArgsToInsert formalArgs realArgs (getStringFromIdToken name) (getCurrentDepth s)
+      updateState(insertArgs argsToInsert)
+      updateState(symtable_insert (Id "$ret" (0, 0), getStringFromIdToken name, [(getCurrentDepth s, ret)]))
+
+      a <- stmts
+      b <- endFunToken
+
+      s <- getState
+      if(execOn s) then fail "function must return a value"
+      else do
+        let retornou = getMayb $ symtable_get (Id "$ret" (0, 0), getCurrentDepth s) s
+        if(not $ compatible (ret, []) (retornou, [])) then fail "type error on function return"
+        else do
+          updateState(symtable_remove_scope (getCurrentScope s))
+          updateState(removeDepth)
+          updateState(removeFromScopeStack)
+          return (retornou)
+          
+
+
+args :: ParsecT [Token] CCureState IO([Type],[Token])
+args = try (do
+            a <- expression
+            b <- remainingArgs
+            return ((fst a):(fst b), (snd a) ++ (snd b))) 
+            <|> return ([], [])
+
+remainingArgs :: ParsecT [Token] CCureState IO([Type], [Token])
+remainingArgs = (do
+                  _ <- commaToken
+                  a <- expression
+                  b <- remainingArgs
+                  return ((fst a):(fst b), (snd a) ++ (snd b))) 
+                  <|> return ([], [])
+
 variableParser :: ParsecT [Token] CCureState IO(Type, [Token])
 variableParser = do
                   id <- idToken
                   try (matrixAcces id)
                     <|> (registerAccess id)
+                    <|> (functionCall id)
                     <|>
                     (do
                       s <- getState
@@ -903,87 +1005,6 @@ eval (MatrixInt (l, c, m), a) (Plus op) (IntType s, b) True
   = (MatrixInt (l, c, scalarSum s m), a ++ [(Plus op)] ++ b)
 eval (MatrixDouble (l, c, m), a) (Plus op) (DoubleType s, b) True
   = (MatrixDouble (l, c, scalarMul s m), a ++ [(Plus op)] ++ b)
-
-
-compatible_op :: (Type, [Token]) -> Token -> (Type, [Token]) -> Bool
-compatible_op (IntType _, _) (Plus _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Minus _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Mult _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Divi _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Mod _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Expo _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Lesser _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Greater _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (LessEq _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (GreatEq _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Eq _ ) (IntType _, _) = True
-compatible_op (IntType _, _) (Diff _ ) (IntType _, _) = True
-
-compatible_op (DoubleType _, _) (Plus _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (Minus _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (Mult _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (Divi _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (Expo _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (Lesser _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (Greater _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (LessEq _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (GreatEq _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (Eq _ ) (DoubleType _, _) = True
-compatible_op (DoubleType _, _) (Diff _ ) (DoubleType _, _) = True
-
-compatible_op (BoolType _, _) (And _ ) (BoolType _, _) = True
-compatible_op (BoolType _, _) (Or _ ) (BoolType _, _) = True
-compatible_op (BoolType _, _) (Eq _ ) (BoolType _, _) = True
-compatible_op (BoolType _, _) (Diff _ ) (BoolType _, _) = True
-
-compatible_op (MatrixInt (l1, c1, _), _) (PlusMatrix _) (MatrixInt (l2, c2, _), _) = l1 == l2 && c1 == c2
-compatible_op (MatrixInt (l1, c1, _), _) (MultMatrix _) (MatrixInt (l2, c2, _), _) = c1 == l2
-
-compatible_op (MatrixDouble (l1, c1, _), _) (PlusMatrix _) (MatrixDouble (l2, c2, _), _) = l1 == l2 && c1 == c2
-compatible_op (MatrixDouble (l1, c1, _), _) (MultMatrix _) (MatrixDouble (l2, c2, _), _) = c1 == l2
-
-compatible_op (IntType _, _) (Mult _) (MatrixInt _, _) = True
-compatible_op (MatrixInt _, _) (Mult _) (IntType _, _) = True
-
-compatible_op (DoubleType _, _) (Mult _) (MatrixDouble _, _) = True
-compatible_op (MatrixDouble _, _) (Mult _) (DoubleType _, _) = True
-
-compatible_op (IntType _, _) (Plus _) (MatrixInt _, _) = True
-compatible_op (MatrixInt _, _) (Plus _) (IntType _, _) = True
-
-compatible_op (DoubleType _, _) (Plus _) (MatrixDouble _, _) = True
-compatible_op (MatrixDouble _, _) (Plus _) (DoubleType _, _) = True
-
-compatible_op _ _ _ = False
-
-compatible :: (Type, [Token]) -> (Type, [Token]) -> Bool
-compatible (IntType _, _) (IntType _, _) = True
-compatible (DoubleType _, _) (DoubleType _, _) = True
-compatible (BoolType _, _) (BoolType _, _) = True
-compatible (StringType _, _) (StringType _, _) = True
-compatible (RegisterType (a, _), _) (RegisterType (b, _), _) = a == b
-compatible _ _ = False
-
-compatible_matrix :: (Type, [Token]) -> (Type, [Token]) -> Bool
-compatible_matrix (MatrixInt _, _) (IntType _, _) = True
-compatible_matrix (MatrixDouble _, _) (DoubleType _, _) = True
-compatible_matrix _ _ = False
-
-compatible_varDecl :: Token -> (Type, [Token]) -> Bool
-compatible_varDecl (Int _) (IntType _, _) = True
-compatible_varDecl (Double _) (DoubleType _, _) = True
-compatible_varDecl (Bool _) (BoolType _, _) = True
-compatible_varDecl (Str _) (StringType _, _) = True
-compatible_varDecl _ _ = False
-
-compatible_matrix_assign :: Token -> (Type, [Token]) -> Type -> Type -> Bool
-compatible_matrix_assign (Int _) (IntType _, _) _ _ = True
-compatible_matrix_assign (Double _) (DoubleType _, _) _ _= True
-
-compatible_matrix_assign (Int _) (MatrixInt (l1, c1, _), _) (IntType l2) (IntType c2) = l1 == l2 && c1 == c2
-compatible_matrix_assign (Double _) (MatrixDouble (l1, c1, _), _) (IntType l2) (IntType c2) = l1 == l2 && c1 == c2
-
-compatible_matrix_assign _ _ _ _ = False
 
 -- funções para a tabela de símbolos
 

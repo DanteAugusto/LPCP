@@ -9,15 +9,22 @@ typeDeclarations
 endTypeDeclarations
 
 subprograms
-    fun f(int c, int a, Abacate x) -> Abacate 
-        puts(a);
+    fun f(int b, int a, Abacate x) -> Abacate 
+        puts(a + b);
+        puts("\n");
+
+        return x;
     endFun
 endSubprograms
 
 program
     Abacate a = Default(Abacate);
     Abacate b = Default(Abacate);
-    int c = 0;
+    
+    int c = f(3, 5, a) + g(3) + h(21);
+    
+    puts(c);
+    puts("eh isso ai pessoal\n");
     
     puts("putz1\n");
     a->a = 23;

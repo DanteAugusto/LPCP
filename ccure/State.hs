@@ -76,8 +76,6 @@ getCurrentLoopStatus :: CCureState -> LoopStatus
 getCurrentLoopStatus (_, _, top:tail, _, _, _, _ ,_) = top
 getCurrentLoopStatus _ = error "trying to access unexistent LoopStatus"
 
-
-
 addToScopeStack :: String -> CCureState -> CCureState
 -- addToScopeStack newScope (a, stack, b, c) = (a, newScope:stack, b, c)
 addToScopeStack newScope (a, top:tail, b, c, d, e, f, g)  = (a, (newScope ++ ['#'] ++ top):top:tail, b, c, d, e, f, g)
@@ -114,7 +112,6 @@ addDepth (a, b, c, d, e, f, g, h) = (a, b, c, d + 1, e, f, g, h)
 removeDepth :: CCureState -> CCureState
 removeDepth (a, b, c, 0, e, f, g, h) = error "trying to remove base depth"
 removeDepth (a, b, c, d, e, f, g, h) = (a, b, c, d - 1, e, f, g, h)
-
 
 execOn :: CCureState -> Bool
 execOn (_, _, _, _, _, _, _, True) = True
