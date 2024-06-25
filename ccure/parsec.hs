@@ -25,6 +25,8 @@ import Distribution.Compat.Lens (_1)
 import System.IO
 import System.Environment
 import Distribution.Compat.Directory (listDirectory)
+import ErrorMessages
+import Utils
 
 -- alias para tipos usados
 type ParsecType = ParsecT [Token] CCureState IO(Type, [Token])
@@ -47,8 +49,8 @@ program = do
             updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
             updateState (removeFromScopeStack)
             eof
-            s <- getState
-            liftIO (print s)
+            -- s <- getState
+            -- liftIO (print s)
             return (a ++ [b] ++ c ++ [d])
 
 subprogramsDeclarations :: ParsecT [Token] CCureState IO ([Token])
@@ -121,7 +123,7 @@ procedureCall id = do
 
                   if(execOn s) then do
                     -- liftIO (print "exec on")
-                    if(not $ isInUserProcs id s) then fail "Invalid procedure call"
+                    if(not $ isInUserProcs id s) then fail $ invalidProcedureCall id
                     else do
 
                       -- liftIO (print "bilu askjdhvasiudbvasdteteia")
@@ -133,8 +135,11 @@ procedureCall id = do
                       -- liftIO(print "procemeu cara")
                       -- liftIO(print proce)
                       -- liftIO(print "beleza")
-
-                      if(not $ compatibleArgsP (fst b) proce) then fail "Invalid arguments on procedure call"
+                      
+                      let tchan = (compatibleArgsP 1 (fst b) proce)
+                      let formalArgs = extractThird3 proce
+                      -- liftIO(print "chomsky")
+                      if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fst b)) (length (formalArgs)))
                       else do
                         nextStmts <- getInput
                         -- liftIO (print "pinto")
@@ -594,9 +599,10 @@ varDecl = do
             if(execOn s) then do
               -- let j = removeQuotes d -- Usado para tirar "" de string
               -- liftIO(print c)
-              if (not (compatible_varDecl a d)) then fail "type error on declaration"
+              if (not (compatible_varDecl a d)) then fail $ typeErrorMessage a (fst d) 
               else
-                do
+                if(isInSymTable (b, (getCurrentDepth s), getCurrentScope s) s) then fail (alreadyDeclaredError (getStringFromIdToken b))
+                else do
                   s <- getState
                   let currentDepth =  getCurrentDepth s
                   updateState (symtable_insert (b, getCurrentScope s, [(currentDepth, fst d)]))
@@ -1104,14 +1110,15 @@ args = try (do
             (do
               ref <- refToken
               id <- idToken
+              b <- remainingArgs
               -- try
                 -- (registerAccess id)
                 -- <|>
               s <- getState
               if(execOn s) then
-                return ([(symtable_get_info id (getCurrentDepth s) s)], [ref, id])
+                return ((symtable_get_info id (getCurrentDepth s) s):fst b, [ref, id] ++ snd b)
               else
-                return ([(Id "$notref" (0,0), "noscope", -1, NULL)], [ref, id])
+                return ((Id "$notref" (0,0), "noscope", -1, NULL):fst b, [ref, id] ++ snd b)
             )
             <|> return ([], [])
 
@@ -1127,14 +1134,15 @@ remainingArgs = try (do
                       comma <- commaToken
                       ref <- refToken
                       id <- idToken
+                      b <- remainingArgs
                       -- try
                         -- (registerAccess id)
                         -- <|>
                       s <- getState
                       if(execOn s) then
-                        return ([(symtable_get_info id (getCurrentDepth s) s)], [comma, ref, id])
+                        return ((symtable_get_info id (getCurrentDepth s) s): fst b, [comma, ref, id] ++ snd b)
                       else
-                        return ([(Id "$notref" (0,0), "noscope", -1, NULL)], [comma, ref, id])
+                        return ((Id "$notref" (0,0), "noscope", -1, NULL): fst b, [comma, ref, id])
                     )
                   <|> return ([], [])
 
@@ -1408,7 +1416,7 @@ isInSymTable_aux (Id id1 p1, depth1, scopToSearch) ((Id id2 p2, scop, (depth2, v
 -- invocação do parser para o símbolo de partida 
 
 parser :: [Token] -> IO (Either ParseError [Token])
-parser tokens = runParserT program ([], [], [], 0, [], [], [], True) "Error message" tokens
+parser tokens = runParserT program ([], [], [], 0, [], [], [], True) "" tokens
 
 -- main :: IO ()
 -- main = case unsafePerformIO (parser (getTokens "problemas/problema4.ccr")) of
