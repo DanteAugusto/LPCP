@@ -15,6 +15,9 @@ subprograms
 
     endFun
 
+    proc printa(int b)
+        puts("Arroz com feijão \n");
+    endProc
 endSubprograms
 
 program
@@ -25,9 +28,10 @@ program
     -- Chama a funcao conta
     int b = conta(a);
 
-    puts("Resultado: ");
-    puts(b);
-    puts("\n");
+    --puts("Resultado: ");
+    --puts(b);
+    --puts("\n");
+    printa(b);
 
 
 

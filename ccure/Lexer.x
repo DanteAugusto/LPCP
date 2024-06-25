@@ -35,6 +35,10 @@ tokens :-
   endFun                          { \p s -> EndFun (getLC p) }
   return                          { \p s -> Return (getLC p) }
   
+  proc                             { \p s -> Proc (getLC p) }
+  endProc                          { \p s -> EndProc (getLC p) }
+  exitproc                         { \p s -> ExitProc (getLC p) }
+
   while                           { \p s -> While (getLC p) }
   endWhile                        { \p s -> EndWhile (getLC p) }
   continue                        { \p s -> Continue (getLC p) }
@@ -104,6 +108,9 @@ data Token =
   Fun                  (Int, Int)        |
   EndFun               (Int, Int)        |
   Return               (Int, Int)        |
+  Proc                 (Int, Int)        |
+  EndProc              (Int, Int)        |
+  ExitProc             (Int, Int)        |
   While                (Int, Int)        |
   EndWhile             (Int, Int)        |
   Continue             (Int, Int)        |

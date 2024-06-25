@@ -73,8 +73,105 @@ remainingSubprograms = (do
 
 subprog :: ParsecT [Token] CCureState IO ([Token])
 subprog = do
-            a <- functionDecl -- <|> procDecl
+            a <- functionDecl <|> procDecl
             return a
+
+-- Vou tentar uma coisa
+procDecl :: ParsecT [Token] CCureState IO ([Token])
+procDecl = do
+                a <- procToken
+                b <- idToken
+                c <- openParentToken
+                d <- parDecs --parDecs -- fazer
+                e <- closeParentToken
+                -- f <- arrowToken
+                -- g <- typeToken <|> typeIdToken
+                h <- stmts
+                i <- endProcToken
+
+                s <- getState
+                updateState(insertUserProc (b, h ++ [i], fst d))
+                return (a:b:[c] ++ (snd d) ++ [e] ++ h ++ [i])
+                
+                -- if(isRegister g) then do
+                --   if(not $ isInUserTypes g s) then fail "Invalid return type in function declaration"
+                --   else do
+                --     -- liftIO (print "quem eh o body da funcao cara")
+                --     -- liftIO (print $ h ++ [i])
+                --     -- liftIO (print "obriado raleu cara")
+                --     updateState(insertUserFunction (b, h ++ [i], getUserType g s, fst d))
+                --     return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                -- else do
+                --   -- liftIO (print "quem eh o body da funcao cara")
+                --   -- liftIO (print $ h ++ [i])
+                --   -- liftIO (print "obriado raleu cara")
+                --   updateState(insertUserFunction (b, h ++ [i], tokenToType2 g, fst d))
+                --   return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+
+procedureCall :: Token -> ParsecT [Token] CCureState IO([Token])
+procedureCall id = do
+                  a <- openParentToken
+                  b <- args
+                  c <- closeParentToken
+                  d <- commaToken
+                  s <- getState
+
+                  -- liftIO (print "antes do exec")
+
+                  if(execOn s) then do
+                    
+                    -- liftIO (print "exec on")
+                    if(not $ isInUserProcs id s) then fail "Invalid procedure call"
+                    else do
+                      
+                      -- liftIO (print "bilu teteia")
+                      let proce = getUserProc id s
+                      
+                      if(not $ compatibleArgsP (fst b) proce) then fail "Invalid arguments on procedure call"
+                      else do
+                        nextStmts <- getInput
+                        -- liftIO (print "pinto")
+                        -- liftIO (print nextStmts)
+                        setInput(getBodyFromProc proce ++ nextStmts)
+                        -- liftIO (print "quem sao meus args cara")
+                        -- liftIO (print (fst b))
+                        -- liftIO (print "obriggado cara")
+                        execProc proce (fst b)
+
+                        return (id:a:(snd b) ++ [c] ++[d])
+
+
+                      --return (getReturnType func, id:a ++ (snd b) ++ c)
+                  else
+                    return (id:a:(snd b) ++ [c] ++ [d])
+
+execProc :: UserProc -> [Type] -> ParsecT [Token] CCureState IO()
+execProc (name, pc, formalArgs) realArgs = 
+    do
+      updateState(addDepth)
+      updateState(pushNewScopeStack $ getStringFromIdToken name)
+      s <- getState
+
+      let argsToInsert = makeArgsToInsert formalArgs realArgs (getStringFromIdToken name) (getCurrentDepth s)
+      updateState(insertArgs argsToInsert)
+      -- updateState(symtable_insert (Id "$ret" (0, 0), getStringFromIdToken name, [(getCurrentDepth s, ret)]))
+
+      a <- stmts
+      b <- endProcToken
+
+      s <- getState
+      -- if(execOff s) then fail "function must return a value"
+      -- else do
+      -- let retornou = getMayb $ symtable_get (Id "$ret" (0, 0), getCurrentDepth s) s
+      -- if(not $ compatible (ret, []) (retornou, [])) then fail "type error on function return"
+      -- else do
+      updateState(symtable_remove_scope (getCurrentScope s))
+      updateState(removeDepth)
+      updateState(removeFromScopeStack)
+      updateState(turnExecOn)
+      -- return (retornou)
+
+-- Estou tentando uma coisa
 
 functionDecl :: ParsecT [Token] CCureState IO ([Token])
 functionDecl = do
@@ -432,27 +529,31 @@ varDecl :: ParsecT [Token] CCureState IO([Token])
 varDecl = do
             a <- typeToken
             b <- idToken
-            c <- assignToken
-            d <- expression
-            -- liftIO (print "olha a expressao ai o")
-            -- liftIO (print d)
-            e <- semiColonToken
-            s <- getState
+            try(do
+              c <- procedureCall b
+              return c) <|> 
+                (do
+              c <- assignToken
+              d <- expression
+              -- liftIO (print "olha a expressao ai o")
+              -- liftIO (print d)
+              e <- semiColonToken
+              s <- getState
 
-            if(execOn s) then do
-              -- let j = removeQuotes d -- Usado para tirar "" de string
-              -- liftIO(print c)
-              if (not (compatible_varDecl a d)) then fail "type error on declaration"
+              if(execOn s) then do
+                -- let j = removeQuotes d -- Usado para tirar "" de string
+                -- liftIO(print c)
+                if (not (compatible_varDecl a d)) then fail "type error on declaration"
+                else
+                  do
+                    s <- getState
+                    let currentDepth =  getCurrentDepth s
+                    updateState(symtable_insert (b, getCurrentScope s, [(currentDepth, fst d)]))
+                    s <- getState
+                    -- liftIO (print s)
+                    return (a:b:[c] ++ (snd d) ++ [e])
               else
-                do
-                  s <- getState
-                  let currentDepth =  getCurrentDepth s
-                  updateState(symtable_insert (b, getCurrentScope s, [(currentDepth, fst d)]))
-                  s <- getState
-                  -- liftIO (print s)
-                  return (a:b:[c] ++ (snd d) ++ [e])
-            else
-              return (a:b:[c] ++ (snd d) ++ [e])
+                return (a:b:[c] ++ (snd d) ++ [e]))
 
 -- removeQuotes :: (Type, [Token]) -> (Type, [Token])
 -- removeQuotes ( StringType x , b) = ( StringType  x , b)

@@ -166,6 +166,21 @@ returnToken = tokenPrim show update_pos get_token where
   get_token (Return p) = Just (Return p)
   get_token _          = Nothing
 
+procToken :: ParsecT [Token] st IO (Token)
+procToken = tokenPrim show update_pos get_token where
+  get_token (Proc p) = Just (Proc p)
+  get_token _       = Nothing
+
+endProcToken :: ParsecT [Token] st IO (Token)
+endProcToken = tokenPrim show update_pos get_token where
+  get_token (EndProc p) = Just (EndProc p)
+  get_token _          = Nothing
+
+exitProcToken :: ParsecT [Token] st IO (Token)
+exitProcToken = tokenPrim show update_pos get_token where
+  get_token (ExitProc p) = Just (ExitProc p)
+  get_token _          = Nothing
+
 putsToken :: ParsecT [Token] st IO (Token)
 putsToken = tokenPrim show update_pos get_token where
   get_token (Puts p) = Just (Puts p)
