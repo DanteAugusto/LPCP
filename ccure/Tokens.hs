@@ -181,6 +181,11 @@ exitProcToken = tokenPrim show update_pos get_token where
   get_token (ExitProc p) = Just (ExitProc p)
   get_token _          = Nothing
 
+refToken :: ParsecT [Token] st IO (Token)
+refToken = tokenPrim show update_pos get_token where
+  get_token (Ref p) = Just (Ref p)
+  get_token _          = Nothing
+
 putsToken :: ParsecT [Token] st IO (Token)
 putsToken = tokenPrim show update_pos get_token where
   get_token (Puts p) = Just (Puts p)

@@ -48,7 +48,7 @@ type UserTypes = [(Token, [(Token, Type)])]
 
 -- Lista de:
 -- Nome do procedimento, pc, lista de parametros
-type UserProcedures = [(Token, [Token], [(Token, Type)])]
+type UserProcedures = [(Token, [Token], [(Token, Type, Bool)])]
 
 -- Lista de:
 -- Nome da funcao, pc, tipo de retorno, lista de parametros

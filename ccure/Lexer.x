@@ -76,6 +76,7 @@ tokens :-
   bool                            { \p s -> Bool (getLC p) }
   string                          { \p s -> Str (getLC p) }
   matrix                          { \p s -> Matrix (getLC p) }
+  ref                             { \p s -> Ref (getLC p) }
 
   cast                            { \p s -> Cast (getLC p) }
   Default                         { \p s -> Default (getLC p) }
@@ -145,6 +146,7 @@ data Token =
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
   Str                  (Int, Int)        |
+  Ref                  (Int, Int)        |
   Cast                 (Int, Int)        |
   Default              (Int, Int)        |
   Puts                 (Int, Int)        |

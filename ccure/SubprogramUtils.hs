@@ -15,7 +15,7 @@ import State
 
 type UserFunction = (Token, [Token], Type, [(Token, Type)])
 
-type UserProc = (Token, [Token], [(Token, Type)])
+type UserProc = (Token, [Token], [(Token, Type, Bool)])
 
 insertUserFunction :: UserFunction -> CCureState -> CCureState
 insertUserFunction f (a, b, c, d, e, g, funcList, h) = (a, b, c, d, e, g, f:funcList, h)
@@ -73,10 +73,11 @@ compatibleArgsP :: [Type] -> UserProc -> Bool
 compatibleArgsP [] (_, _, []) = True
 compatibleArgsP [] _ = False
 compatibleArgsP _ (_, _, []) = False
-compatibleArgsP (a:as) (c, d, (_, b):bs) = (compatible (a, []) (b, [])) && compatibleArgsP as (c, d, bs)
+compatibleArgsP (a:as) (c, d, (_, b, _):bs) = (compatible (a, []) (b, [])) && compatibleArgsP as (c, d, bs)
 
 getBodyFromFunc :: UserFunction -> [Token]
 getBodyFromFunc (_, pc, _, _) = pc
 
 getBodyFromProc :: UserProc -> [Token]
 getBodyFromProc (_, pc, _) = pc
+

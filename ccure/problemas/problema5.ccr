@@ -15,23 +15,23 @@ subprograms
 
     endFun
 
-    proc printa(int b)
-        puts("Arroz com feijão \n");
+    proc printa()
+        puts("Arroz com feijao \n");
     endProc
 endSubprograms
 
 program
 
     -- Programa principal
-    int a = 8;
+    int a = 10;
 
     -- Chama a funcao conta
     int b = conta(a);
 
     --puts("Resultado: ");
-    --puts(b);
+    puts(b);
     --puts("\n");
-    printa(b);
+    printa();
 
 
 
