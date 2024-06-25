@@ -35,6 +35,10 @@ tokens :-
   endFun                          { \p s -> EndFun (getLC p) }
   return                          { \p s -> Return (getLC p) }
   
+  proc                             { \p s -> Proc (getLC p) }
+  endProc                          { \p s -> EndProc (getLC p) }
+  exitproc                         { \p s -> ExitProc (getLC p) }
+
   while                           { \p s -> While (getLC p) }
   endWhile                        { \p s -> EndWhile (getLC p) }
   continue                        { \p s -> Continue (getLC p) }
@@ -72,8 +76,10 @@ tokens :-
   bool                            { \p s -> Bool (getLC p) }
   string                          { \p s -> Str (getLC p) }
   matrix                          { \p s -> Matrix (getLC p) }
+  ref                             { \p s -> Ref (getLC p) }
 
   cast                            { \p s -> Cast (getLC p) }
+  Default                         { \p s -> Default (getLC p) }
   puts                            { \p s -> Puts (getLC p) }
   stup                            { \p s -> Stup (getLC p) }
 
@@ -103,6 +109,9 @@ data Token =
   Fun                  (Int, Int)        |
   EndFun               (Int, Int)        |
   Return               (Int, Int)        |
+  Proc                 (Int, Int)        |
+  EndProc              (Int, Int)        |
+  ExitProc             (Int, Int)        |
   While                (Int, Int)        |
   EndWhile             (Int, Int)        |
   Continue             (Int, Int)        |
@@ -136,8 +145,10 @@ data Token =
   Matrix               (Int, Int)        |
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
-  Str               (Int, Int)        |
+  Str                  (Int, Int)        |
+  Ref                  (Int, Int)        |
   Cast                 (Int, Int)        |
+  Default              (Int, Int)        |
   Puts                 (Int, Int)        |
   Stup                 (Int, Int)        |
   IntLit               Int (Int, Int)    |

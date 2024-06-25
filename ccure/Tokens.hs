@@ -6,6 +6,11 @@ module Tokens where
 import Lexer
 import Text.Parsec
 
+arrowToken :: ParsecT [Token] st IO (Token)
+arrowToken = tokenPrim show update_pos get_token where
+  get_token (Arrow p) = Just (Arrow p)
+  get_token _         = Nothing
+
 programToken :: ParsecT [Token] st IO (Token)
 programToken = tokenPrim show update_pos get_token where
   get_token (Program p) = Just (Program p)
@@ -96,6 +101,11 @@ idToken = tokenPrim show update_pos get_token where
   get_token (Id x p) = Just (Id x p)
   get_token _        = Nothing
 
+typeIdToken :: ParsecT [Token] st IO (Token)
+typeIdToken = tokenPrim show update_pos get_token where
+  get_token (TypeId x p) = Just (TypeId x p)
+  get_token _        = Nothing
+
 semiColonToken :: ParsecT [Token] st IO (Token)
 semiColonToken = tokenPrim show update_pos get_token where
   get_token (Semicolon p) = Just (Semicolon p)
@@ -135,6 +145,46 @@ castToken :: ParsecT [Token] st IO (Token)
 castToken = tokenPrim show update_pos get_token where
   get_token (Cast p) = Just (Cast p)
   get_token _         = Nothing
+
+defaultToken :: ParsecT [Token] st IO (Token)
+defaultToken = tokenPrim show update_pos get_token where
+  get_token (Default p) = Just (Default p)
+  get_token _         = Nothing
+
+funToken :: ParsecT [Token] st IO (Token)
+funToken = tokenPrim show update_pos get_token where
+  get_token (Fun p) = Just (Fun p)
+  get_token _       = Nothing
+
+endFunToken :: ParsecT [Token] st IO (Token)
+endFunToken = tokenPrim show update_pos get_token where
+  get_token (EndFun p) = Just (EndFun p)
+  get_token _          = Nothing
+
+returnToken :: ParsecT [Token] st IO (Token)
+returnToken = tokenPrim show update_pos get_token where
+  get_token (Return p) = Just (Return p)
+  get_token _          = Nothing
+
+procToken :: ParsecT [Token] st IO (Token)
+procToken = tokenPrim show update_pos get_token where
+  get_token (Proc p) = Just (Proc p)
+  get_token _       = Nothing
+
+endProcToken :: ParsecT [Token] st IO (Token)
+endProcToken = tokenPrim show update_pos get_token where
+  get_token (EndProc p) = Just (EndProc p)
+  get_token _          = Nothing
+
+exitProcToken :: ParsecT [Token] st IO (Token)
+exitProcToken = tokenPrim show update_pos get_token where
+  get_token (ExitProc p) = Just (ExitProc p)
+  get_token _          = Nothing
+
+refToken :: ParsecT [Token] st IO (Token)
+refToken = tokenPrim show update_pos get_token where
+  get_token (Ref p) = Just (Ref p)
+  get_token _          = Nothing
 
 putsToken :: ParsecT [Token] st IO (Token)
 putsToken = tokenPrim show update_pos get_token where

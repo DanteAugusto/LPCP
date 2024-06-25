@@ -1,0 +1,61 @@
+subprograms
+
+    proc mdc(int n, int m, ref int r)
+
+        bool else1 = True;
+        bool else2 = True;
+        while(m % n == 0)
+            r = n;
+            else1 = False;
+            else2 = False;
+            break;
+        endWhile
+
+        while(else1 && n % m == 0)
+            r = m;
+            else2 = False;
+            break;
+        endWhile
+
+        while(else2)
+            bool else3 = True;
+
+            while(m > n)
+                mdc(n, m % n, ref r);
+                else3 = False;
+                break;
+            endWhile
+
+            while(else3)
+                mdc(m, n % m, ref r);
+                break;
+            endWhile
+
+            break;
+        endWhile
+
+    endProc
+
+endSubprograms
+
+program
+
+    -- Programa principal
+    int a = 15;
+
+    -- Chama a funcao conta
+    int b = 57;
+
+    puts("Qual eh o mdc entre ");
+    puts(a);
+    puts(" e ");
+    puts(b);
+    puts("?????????\n Isso mesmo, o resultado eh: ");
+    int r = 0;
+    mdc(a, b, ref r);
+    puts(r);
+    puts("\n");
+
+
+
+end
