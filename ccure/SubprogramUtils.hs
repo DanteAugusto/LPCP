@@ -69,11 +69,14 @@ compatibleArgs [] _ = False
 compatibleArgs _ (_, _, _, []) = False
 compatibleArgs (a:as) (c, d, e, (_, b):bs) = (compatible (a, []) (b, [])) && compatibleArgs as (c, d, e, bs)
 
-compatibleArgsP :: [Type] -> UserProc -> Bool
+compatibleArgsP :: [(Token, String, Int, Type)] -> UserProc -> Bool
 compatibleArgsP [] (_, _, []) = True
 compatibleArgsP [] _ = False
 compatibleArgsP _ (_, _, []) = False
-compatibleArgsP (a:as) (c, d, (_, b, _):bs) = (compatible (a, []) (b, [])) && compatibleArgsP as (c, d, bs)
+compatibleArgsP ((Id "$notref" _, _, _, a):as) (c, d, (_, b, True):bs) = False
+compatibleArgsP ((Id "$notref" _, _, _, a):as) (c, d, (_, b, False):bs) = (compatible (a, []) (b, [])) && compatibleArgsP as (c, d, bs)
+compatibleArgsP ((_, _, _, a):as)         (c, d, (_, b, False):bs) = False
+compatibleArgsP ((_, _, _, a):as)         (c, d, (_, b, True):bs) = (compatible (a, []) (b, [])) && compatibleArgsP as (c, d, bs)
 
 getBodyFromFunc :: UserFunction -> [Token]
 getBodyFromFunc (_, pc, _, _) = pc

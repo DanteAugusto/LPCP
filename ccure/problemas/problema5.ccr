@@ -1,37 +1,60 @@
 subprograms
 
-    -- Funcao recursiva que conta de n ate 1
+    proc mdc(int n, int m, ref int r)
 
-    fun conta(int n) -> int
-
-        -- Se n for 1, retorna 1
-        while(n == 1)
-            return 1;
+        bool else1 = True;
+        bool else2 = True;
+        while(m % n == 0)
+            r = n;
+            else1 = False;
+            else2 = False;
             break;
         endWhile
 
-        -- Senao, chama a funcao com n-1 e soma com n
-        return n + conta(n-1);
+        while(else1 && n % m == 0)
+            r = m;
+            else2 = False;
+            break;
+        endWhile
 
-    endFun
+        while(else2)
+            bool else3 = True;
 
-    proc printa()
-        puts("Arroz com feijao \n");
+            while(m > n)
+                mdc(n, m % n, ref r);
+                else3 = False;
+                break;
+            endWhile
+
+            while(else3)
+                mdc(m, n % m, ref r);
+                break;
+            endWhile
+
+            break;
+        endWhile
+
     endProc
+
 endSubprograms
 
 program
 
     -- Programa principal
-    int a = 10;
+    int a = 15;
 
     -- Chama a funcao conta
-    int b = conta(a);
+    int b = 57;
 
-    --puts("Resultado: ");
+    puts("Qual eh o mdc entre ");
+    puts(a);
+    puts(" e ");
     puts(b);
-    --puts("\n");
-    printa();
+    puts("?????????\n Isso mesmo, o resultado eh: ");
+    int r = 0;
+    mdc(a, b, ref r);
+    puts(r);
+    puts("\n");
 
 
 
