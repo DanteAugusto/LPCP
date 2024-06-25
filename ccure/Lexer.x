@@ -156,13 +156,71 @@ data Token =
   BoolLit              Bool   (Int, Int) |
   StringLit            String (Int, Int) |
   Id                   String (Int, Int) |
-  TypeId               String (Int, Int)  
-  deriving (Eq, Show)
+  TypeId               String (Int, Int) 
+  deriving (Eq)
 
--- instance Show Token where
---   show (DoubleLit v p) = show v
---   show (IntLit v p) = show v
---   show _ = ""
+instance Show Token where
+  show (DoubleLit v p) = "Double"
+  show (IntLit v p) = "Int"
+  show (BoolLit v p) = "Bool"
+  show (TypeDeclarations p) = "TypeDeclarations"
+  show (EndTypeDeclarations p) = "EndTypeDeclarations"
+  show (Register p) = "Register"
+  show (EndRegister p) = "EndRegister"
+  show (GlobalVariables p) = "GlobalVariables"
+  show (EndGlobalVariables p) = "EndGlobalVariables"
+  show (Subprograms p) = "Subprograms"
+  show (EndSubprograms p) = "EndSubprograms"
+  show (Program p) = "Program"
+  show (End p) = "End"
+  show (Fun p) = "Fun"
+  show (EndFun p) = "EndFun"
+  show (Return p) = "Return"
+  show (Proc p) = "Proc"
+  show (EndProc p) = "EndProc"
+  show (ExitProc p) = "ExitProc"
+  show (While p) = "While"
+  show (EndWhile p) = "EndWhile"
+  show (Continue p) = "Continue"
+  show (Break p) = "Break"
+  show (Semicolon p) = "Semicolon"
+  show (Arrow p) = "Arrow"
+  show (PlusMatrix p) = "PlusMatrix"
+  show (MultMatrix p) = "MultMatrix"
+  show (Plus p) = "Plus"
+  show (Mult p) = "Mult"
+  show (Divi p) = "Divi"
+  show (Mod p) = "Mod"
+  show (Lesser p) = "Lesser"
+  show (Greater p) = "Greater"
+  show (LessEq p) = "LessEq"
+  show (GreatEq p) = "GreatEq"
+  show (And p) = "And"
+  show (Or p) = "Or"
+  show (Eq p) = "Eq"
+  show (Diff p) = "Diff"
+  show (Neg p) = "Neg"
+  show (Minus p) = "Minus"
+  show (Expo p) = "Expo"
+  show (Assign p) = "Assign"
+  show (OpenParent p) = "OpenParent"
+  show (CloseParent p) = "CloseParent"
+  show (OpenBrack p) = "OpenBrack"
+  show (CloseBrack p) = "CloseBrack"
+  show (Comma p) = "Comma"
+  show (Int p) = "Int"
+  show (Matrix p) = "Matrix"
+  show (Double p) = "Double"
+  show (Bool p) = "Bool"
+  show (Str p) = "Str"
+  show (Ref p) = "Ref"
+  show (Cast p) = "Cast"
+  show (Default p) = "Default"
+  show (Puts p) = "Puts"
+  show (Stup p) = "Stup"
+  show (StringLit v p) = "String"
+  show (Id v p) = show v
+  show (TypeId v p) = show v
 
 -- "<"                             { \p s -> Lesser (getLC p) }
 --   ">"                             { \p s -> Greater (getLC p) }

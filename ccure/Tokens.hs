@@ -5,6 +5,7 @@ module Tokens where
 
 import Lexer
 import Text.Parsec
+import Data.Sequence (update)
 
 arrowToken :: ParsecT [Token] st IO (Token)
 arrowToken = tokenPrim show update_pos get_token where
@@ -313,5 +314,65 @@ stringLitToken = tokenPrim show update_pos get_token where
   get_token _      = Nothing
 
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
-update_pos pos _ (tok:_) = pos -- necessita melhoria
+update_pos pos _ ((Int (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Double (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Bool (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Str (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Id _ (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((TypeId _ (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((IntLit _ (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((DoubleLit _ (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((BoolLit _ (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Arrow (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Program (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((TypeDeclarations (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((EndTypeDeclarations (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((GlobalVariables (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((EndGlobalVariables (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Subprograms (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((EndSubprograms (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Register (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Matrix (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((PlusMatrix (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((MultMatrix (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((EndRegister (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((End (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((OpenParent (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((CloseParent (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((OpenBrack (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((CloseBrack (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Semicolon (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Comma (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Assign (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Cast (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Default (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Fun (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((EndFun (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((Return p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Proc p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((EndProc p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((ExitProc p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Ref p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Puts p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Stup p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((While p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((EndWhile p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Continue p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Break p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Minus p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Divi p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Plus p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Mult p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Mod p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Expo p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((And p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Or p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Lesser p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Greater p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((LessEq p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((GreatEq p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Eq p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Diff p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Neg p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((StringLit _ (l,c)):_) = setSourceLine (setSourceColumn pos c) l
 update_pos pos _ []      = pos  

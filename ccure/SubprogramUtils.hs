@@ -69,14 +69,26 @@ compatibleArgs [] _ = False
 compatibleArgs _ (_, _, _, []) = False
 compatibleArgs (a:as) (c, d, e, (_, b):bs) = (compatible (a, []) (b, [])) && compatibleArgs as (c, d, e, bs)
 
-compatibleArgsP :: [(Token, String, Int, Type)] -> UserProc -> Bool
-compatibleArgsP [] (_, _, []) = True
-compatibleArgsP [] _ = False
-compatibleArgsP _ (_, _, []) = False
-compatibleArgsP ((Id "$notref" _, _, _, a):as) (c, d, (_, b, True):bs) = False
-compatibleArgsP ((Id "$notref" _, _, _, a):as) (c, d, (_, b, False):bs) = (compatible (a, []) (b, [])) && compatibleArgsP as (c, d, bs)
-compatibleArgsP ((_, _, _, a):as)         (c, d, (_, b, False):bs) = False
-compatibleArgsP ((_, _, _, a):as)         (c, d, (_, b, True):bs) = (compatible (a, []) (b, [])) && compatibleArgsP as (c, d, bs)
+-- Tipos de erros
+-- 0 - Sem erro
+-- 1 - Número de argumentos menor que o esperado
+-- 1 - Número de argumentos maior que o esperado
+-- 2 - Argumento nao passado por referencia, mas esperado ser passado por referencia
+-- 3 - Argumento passado por referencia, mas esperado nao ser passado por referencia
+-- 4 - Argumento incompatível
+
+compatibleArgsP :: Int -> [(Token, String, Int, Type)] -> UserProc -> (Int, Int, Type, Type) -- (Erro, NumParametro, Tipo Real, Tipo Formal)
+compatibleArgsP _ [] (_, _, []) = (0, 0, NULL, NULL)
+compatibleArgsP i [] _ = (1, i, NULL, NULL)
+compatibleArgsP i _ (_, _, []) = (1, i, NULL, NULL)
+compatibleArgsP i ((Id "$notref" _, _, _, a):as) (c, d, (_, b, True):bs) = (2, i, NULL, NULL)
+compatibleArgsP i ((Id "$notref" _, _, _, a):as) (c, d, (_, b, False):bs) = 
+  if( compatible (a, []) (b, []) ) then compatibleArgsP (i + 1) as (c, d, bs)
+  else (4, i, a, b)
+compatibleArgsP i ((_, _, _, a):as)         (c, d, (_, b, False):bs) = (3, i, NULL, NULL)
+compatibleArgsP i ((_, _, _, a):as)         (c, d, (_, b, True):bs) = 
+  if( compatible (a, []) (b, []) ) then compatibleArgsP (i + 1) as (c, d, bs)
+  else (4, i, a, b)
 
 getBodyFromFunc :: UserFunction -> [Token]
 getBodyFromFunc (_, pc, _, _) = pc
