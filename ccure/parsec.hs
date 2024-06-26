@@ -518,10 +518,10 @@ matrixDecl = do
               if(execOn s) then do
                 -- aq tem q checar se o tipo é valido, ou seja:
                 -- se lin e col sao inteiros > 0
-                if(not $ validDimensions (fst lin) (fst col)) then fail "Invalid Dimensions given for matrix"
+                if(not $ validDimensions (fst lin) (fst col)) then fail matrixPositiveIntegersDimensions
                 else
                   -- se initVal é compatível com a matriz
-                  if(not $ compatible_matrix_assign typ initVal (fst lin) (fst col)) then fail "Invalid value assigned to matrix"
+                  if(not $ compatible_matrix_assign typ initVal (fst lin) (fst col)) then fail matrixIncompatibleValueAssigned
                   else
                   -- se tiver tudo ok, construir a matriz e colocar na tabela de simbolos
                     do
@@ -548,17 +548,21 @@ registerDecl = do
                       e <- semiColonToken
                       s <- getState
                       if(execOn s) then do
-                        if(not $ isInUserTypes a s) then fail "Invalid register type"
+                        if(not $ isInUserTypes a s) then fail (invalidUserType a)
                         else do
-
-                          -- Check if d is compatible with a
-                          if(not $ compatible (getUserType a s, []) d) then fail "type error on register declaration"
+                          
+                          -- Check if b was already declared
+                          if(isInSymTable (b, (getCurrentDepth s), getCurrentScope s) s) then fail (alreadyDeclaredError (getStringFromIdToken b))
                           else do
 
-                            let valToInsert = (fst d)
-                            let currentDepth =  getCurrentDepth s
-                            updateState (symtable_insert (b, getCurrentScope s, [(currentDepth, valToInsert)]))
-                            return (a:b:[c] ++ (snd d) ++ [e])
+                            -- Check if d is compatible with a
+                            if(not $ compatible (getUserType a s, []) d) then fail (typeErrorMessage a (fst d))
+                            else do
+
+                              let valToInsert = (fst d)
+                              let currentDepth =  getCurrentDepth s
+                              updateState (symtable_insert (b, getCurrentScope s, [(currentDepth, valToInsert)]))
+                              return (a:b:[c] ++ (snd d) ++ [e])
                       else
                         return (a:b:[c] ++ (snd d) ++ [e])
 
@@ -570,13 +574,13 @@ defaultParser typeid id = do
                           d <- closeParentToken
                           s <- getState
                           if (execOn s) then
-                            if (not (compareTypeIdTokens typeid c)) then fail "type error on default"
+                            if (not (compareTypeIdTokens typeid c)) then fail (typeErrorDefaultRegister typeid c)
                             else
                               -- Check if typeid is declared on UserTypes
-                              if(not (isInUserTypes typeid s)) then fail "user type not declared"
+                              if(not (isInUserTypes typeid s)) then fail (invalidUserType typeid)
                               else
                                 -- Check if id is already declared in symtable
-                                if(isInSymTable (id, (getCurrentDepth s), getCurrentScope s) s) then fail "id already declared"
+                                if(isInSymTable (id, (getCurrentDepth s), getCurrentScope s) s) then fail (alreadyDeclaredError (getStringFromIdToken id))
                                 else do
                                   let user = getUserType typeid s
                                   let currentDepth =  getCurrentDepth s
@@ -601,14 +605,21 @@ varDecl = do
               -- let j = removeQuotes d -- Usado para tirar "" de string
               -- liftIO(print c)
               if (not (compatible_varDecl a d)) then fail $ typeErrorMessage a (fst d) 
-              else
+              else do
+                -- liftIO (print "chomsky")
+                -- liftIO (print b)
+                -- liftIO (print (getCurrentDepth s))
+                -- liftIO (print (getCurrentScope s))
+                -- liftIO (print "chomsky2")
                 if(isInSymTable (b, (getCurrentDepth s), getCurrentScope s) s) then fail (alreadyDeclaredError (getStringFromIdToken b))
                 else do
+                  -- liftIO (print "chomsky3")
                   s <- getState
                   let currentDepth =  getCurrentDepth s
                   updateState (symtable_insert (b, getCurrentScope s, [(currentDepth, fst d)]))
                   s <- getState
                   -- liftIO (print s)
+                  -- liftIO (print "chomsky4")
                   return (a:b:[c] ++ (snd d) ++ [e])
             else
               return (a:b:[c] ++ (snd d) ++ [e])
@@ -666,11 +677,11 @@ matrixStup id = do
                     let strConverted = convertStringToType input e
                     let currentDepth = getCurrentDepth s
                     let matrix = getMayb (symtable_get (id, currentDepth) s)
-                    if not $ validAccess xt yt then fail "Negative indexes, access is not allowed"
+                    if not $ validAccess xt yt then fail matrixPositiveIntegersAccess
                     else
-                      if(not $ canAccesMatrix xt yt matrix) then fail "Invalid indexes on trying to access matrix"
+                      if(not $ canAccesMatrix xt yt matrix) then fail matrixAccessOutOfBounds
                       else
-                        if(not (compatible_matrix (get_type id s, []) (strConverted, []) )) then fail "type error on input"
+                        if(not (compatible_matrix (get_type id s, []) (strConverted, []) )) then fail (typeErrorMessage (typeToToken(get_type id s)) strConverted)
                         else do
                           updateState (symtable_update_matrix (id, currentDepth, getValFromType xt, getValFromType yt, strConverted))
                           return (id:[ob1] ++ xx ++ cb1:[ob2] ++ yy ++ [cb2])
@@ -701,7 +712,7 @@ readStup = do
                         if(execOn s) then do
                           input <- liftIO (getLine)
                           let strConverted = convertStringToType input e
-                          if(not (compatible (get_type c s, []) (strConverted, []) )) then fail "type error on input"
+                          if(not (compatible (get_type c s, []) (strConverted, []) )) then fail (typeErrorMessage (typeToToken(get_type c s)) strConverted)
                           else do
                             updateState (symtable_update (c, getCurrentDepth s ,strConverted))
                             return (a:b:c:d:e:f:[g])
@@ -750,7 +761,7 @@ whileStmt = do
               if(execOn s) then do
                 updateState (addToScopeStack "while")
                 updateState (addToLoopStack OK)
-                if( not (compatible b (BoolType True, []) ) ) then fail "control expression on while must be a boolean"
+                if( not (compatible b (BoolType True, []) ) ) then fail (controlNotBoolError (typeToToken(fst b)))
                 else
                   if(get_bool_value (fst b)) then do
                     c <- stmts
@@ -823,7 +834,7 @@ breakStmt = do
                   --   updateState(addToLoopStack BREAK)
                   -- else pure()
                 else
-                  fail "break statement out of loop structure"
+                  fail breakOutOfLoopError
               else pure ()
 
               return (a:[b])
@@ -840,10 +851,10 @@ returnStmt = do
                 -- liftIO (print "getejhtiuahetrfwaiehf")
                 -- liftIO (print (getCurrentScope s))
                 -- liftIO (print "????????????")
-                if(getLastScop (getCurrentScope s) == "program") then fail "return statement out of function"
+                if(getLastScop (getCurrentScope s) == "program") then fail returnOutOfFunctionError
                 else do
                   let ret = getReturnType (getCurrentScope s) s
-                  if(not (compatible b (ret, []))) then fail "type error on return"
+                  if(not (compatible b (ret, []))) then fail (typeErrorReturn (typeToToken ret) (fst b))
                   else do
                     updateState (symtable_update (Id "$ret" (0, 0), getCurrentDepth s, fst b))
                     updateState (turnExecOff)
@@ -870,7 +881,7 @@ assign = do
                   if(execOn s) then do
                     -- let j = removeQuotes c -- Usado para tirar "" de string
                     -- liftIO(print c)
-                    if (not (compatible (get_type a s, []) c)) then fail "type error on assign"
+                    if (not (compatible (get_type a s, []) c)) then fail (typeErrorMessage (typeToToken(get_type a s)) (fst c))
                     else
                       do
                         updateState (symtable_update (a, getCurrentDepth s, fst c))
@@ -982,7 +993,7 @@ castParser = do
               closeP <- closeParentToken
               s <- getState
               if(execOn s) then do
-                if (not (canCast valExp t)) then fail "cast error"
+                if (not (canCast valExp t)) then fail (castError (typeToToken valExp) t)
                 else
                   do
                     return (cast valExp t, ct:[openP] ++ exp ++ c:t:[closeP])
@@ -1033,16 +1044,21 @@ functionCall id = do
                   -- liftIO (print "antes do exec")
 
                   if(execOn s) then do
-
+                    
                     -- liftIO (print "exec on")
-                    if(not $ isInUserFunctions id s) then fail "Invalid function call"
+                    if(not $ isInUserFunctions id s) then fail (invalidFunctionCall id)
                     else do
 
                       -- liftIO (print "bilu teteia")
                       let func = getUserFunc id s
                       let fstb = [(x) | (_, _, _, x) <- fst b]
 
-                      if(not $ compatibleArgs (fstb) func) then fail "Invalid arguments on function call"
+                      let tchan = (compatibleArgs 1 (fstb) func)
+                      let formalArgs = extractFourth4 func
+                      -- -- liftIO(print "chomsky")
+                      -- if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fst b)) (length (formalArgs)))
+
+                      if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fstb)) (length (formalArgs)))
                       else do
                         nextStmts <- getInput
                         -- liftIO (print "pinto")
@@ -1095,10 +1111,10 @@ execFunction (name, pc, ret, formalArgs) realArgs =
       b <- endFunToken
 
       s <- getState
-      if(execOn s) then fail "function must return a value"
+      if(execOn s) then fail "NoValueReturnedError: Got to the end of function execution, but didn't return a value."
       else do
         let retornou = getMayb $ symtable_get (Id "$ret" (0, 0), getCurrentDepth s) s
-        if(not $ compatible (ret, []) (retornou, [])) then fail "type error on function return"
+        if(not $ compatible (ret, []) (retornou, [])) then fail (typeErrorReturn (typeToToken ret) retornou)
         else do
           updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
           updateState (removeDepth)

@@ -63,11 +63,18 @@ getUserProcAux (Id id p) ( (Id id1 p1, pc, param):t )
       else getUserProcAux (Id id p) t
 getUserProcAux _ _ = error "getUserProcAux: unexpected pattern"
 
-compatibleArgs :: [Type] -> UserFunction -> Bool
-compatibleArgs [] (_, _, _, []) = True
-compatibleArgs [] _ = False
-compatibleArgs _ (_, _, _, []) = False
-compatibleArgs (a:as) (c, d, e, (_, b):bs) = (compatible (a, []) (b, [])) && compatibleArgs as (c, d, e, bs)
+-- Tipos de erros
+-- 0 - Sem erro
+-- 1 - Número de argumentos menor ou maior que o esperado
+-- 4 - Argumento incompatível
+
+compatibleArgs :: Int -> [Type] -> UserFunction -> (Int, Int, Type, Type) -- (Erro, NumParametro, Tipo Real, Tipo Formal)
+compatibleArgs _ [] (_, _, _, []) = (0, 0, NULL, NULL)
+compatibleArgs i [] _ = (1, i, NULL, NULL)
+compatibleArgs i _ (_, _, _, []) = (1, i, NULL, NULL)
+compatibleArgs i (a:as) (c, d, e, (_, b):bs) = 
+  if( compatible (a, []) (b, []) ) then compatibleArgs (i + 1) as (c, d, e, bs)
+  else (4, i, a, b)
 
 -- Tipos de erros
 -- 0 - Sem erro

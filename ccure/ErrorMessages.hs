@@ -10,8 +10,17 @@ alreadyDeclaredError var = "Variable \"" ++ var ++ "\" already declared. Remembe
 typeErrorMessage :: Token -> Type -> String
 typeErrorMessage expectedType receivedType = "Type error: expected " ++ show expectedType ++ " but received " ++ show (typeToToken receivedType) ++ "."
 
+typeErrorReturn :: Token -> Type -> String
+typeErrorReturn expectedType receivedType = "Type error: expected " ++ show expectedType ++ " but received " ++ show (typeToToken receivedType) ++ "."
+
+-- typeErrorInput :: Token -> String
+-- typeErrorInput id = "Type error: couldn't convert input to be of type Int or Double, but received " ++ show id ++ "."
+
 invalidProcedureCall :: Token -> String
 invalidProcedureCall id = "Invalid procedure call: " ++ show id ++ " not declared."
+
+invalidFunctionCall :: Token -> String
+invalidFunctionCall id = "Invalid function call: " ++ show id ++ " not declared."
 
 -- Tipos de erros
 -- 0 - Sem erro
@@ -26,6 +35,11 @@ invalidArgsProcedure (2, i, _, _) _ _ = "Argument " ++ show i ++ " expected to b
 invalidArgsProcedure (3, i, _, _) _ _ = "Argument " ++ show i ++ " expected to be passed by value."
 invalidArgsProcedure (4, i, a, b) _ _ = "Argument " ++ show i ++ " expected to be of type " ++ show (typeToToken b) ++ " but received " ++ show (typeToToken a) ++ "."
 
+typeErrorDefaultRegister :: Token -> Token -> String
+typeErrorDefaultRegister expectedType receivedType = "Type error on Default constructor: expected " ++ show expectedType ++ " but received " ++ show receivedType ++ "."
+
+invalidUserType :: Token -> String
+invalidUserType id = "Invalid user type: " ++ show id ++ " not declared."
 
 invalidUserTypeReturn :: Token -> String
 invalidUserTypeReturn id = "Invalid user type in return: " ++ show id ++ " not declared."
@@ -41,6 +55,13 @@ isNotRegisterType id = "Invalid register access: " ++ show id ++ " is not a regi
 
 matrixPositiveIntegersAccess :: String
 matrixPositiveIntegersAccess = "Acessing a matrix requires positive integers as indexes."
+
+matrixPositiveIntegersDimensions :: String
+matrixPositiveIntegersDimensions = "Creating a matrix requires positive integers as dimensions."
+
+matrixIncompatibleValueAssigned :: String
+matrixIncompatibleValueAssigned = "Incompatible value assigned to matrix. It needs to be a matrix with same lines, collumns and type of the matrix, or a scalar value of the same type of the matrix."
+
 
 matrixAccessOutOfBounds :: String
 matrixAccessOutOfBounds = "Acessing a matrix out of bounds."
@@ -67,7 +88,21 @@ invalidOperation a (MultMatrix p) b = "Invalid operation: " ++ show (MultMatrix 
 invalidOperation _ _ _ = "Invalid operation: unknown error."
 
 invalidUnaryOperation :: Token -> Token -> String
-invalidUnaryOperation (Plus p) a = "Invalid operation: " ++ show (Plus p) ++ " " ++ " required an operand of type Int or Double, but received " ++ show a ++ "."
-invalidUnaryOperation (Minus p) a = "Invalid operation: " ++ show (Minus p) ++ " " ++ " required an operand of type Int or Double, but received " ++ show a ++ "."
-invalidUnaryOperation (Neg p) a = "Invalid operation: " ++ show (Neg p) ++ " " ++ " required an operand of type Bool, but received " ++ show a ++ "."
-invalidUnaryOperation _ _ = "Invalid operation: unknown error."
+invalidUnaryOperation (Plus p) a = "Invalid unary operation: " ++ show (Plus p) ++ " " ++ " required an operand of type Int or Double, but received " ++ show a ++ "."
+invalidUnaryOperation (Minus p) a = "Invalid unary operation: " ++ show (Minus p) ++ " " ++ " required an operand of type Int or Double, but received " ++ show a ++ "."
+invalidUnaryOperation (Neg p) a = "Invalid unary operation: " ++ show (Neg p) ++ " " ++ " required an operand of type Bool, but received " ++ show a ++ "."
+invalidUnaryOperation _ _ = "Invalid unary operation: unknown error."
+
+
+controlNotBoolError :: Token -> String
+controlNotBoolError id = "Control structure error: " ++ show id ++ " is not of type Bool."
+
+breakOutOfLoopError :: String
+breakOutOfLoopError = "Break statement outside of loop."
+
+returnOutOfFunctionError :: String
+returnOutOfFunctionError = "Return statement outside of function."
+
+
+castError :: Token -> Token -> String
+castError a b = "Cast error: cannot cast " ++ show a ++ " to " ++ show b ++ ". Only widening casts are allowed."
