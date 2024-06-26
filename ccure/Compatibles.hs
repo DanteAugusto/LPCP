@@ -12,6 +12,14 @@ import Lexer
 import Text.Parsec
 import State
 
+compatible_op_unary :: Token -> (Type, [Token]) -> Bool
+compatible_op_unary (Minus _) (IntType _, _) = True
+compatible_op_unary (Minus _) (DoubleType _, _) = True
+compatible_op_unary (Plus _) (IntType _, _) = True
+compatible_op_unary (Plus _) (DoubleType _, _) = True
+compatible_op_unary (Neg _) (BoolType _, _) = True
+compatible_op_unary _ _ = False
+
 compatible_op :: (Type, [Token]) -> Token -> (Type, [Token]) -> Bool
 compatible_op (IntType _, _) (Plus _ ) (IntType _, _) = True
 compatible_op (IntType _, _) (Minus _ ) (IntType _, _) = True

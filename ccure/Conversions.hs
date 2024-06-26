@@ -9,6 +9,6 @@ typeToToken (DoubleType _) = Double (0, 0)
 typeToToken (BoolType _) = Bool (0, 0)
 typeToToken (StringType _) = Str (0, 0)
 typeToToken (RegisterType (TypeId id p, l)) = TypeId id (0, 0)
-typeToToken (MatrixInt (l, c, m)) = Matrix (0, 0)
-typeToToken (MatrixDouble (l, c, m)) = Matrix (0, 0)
+typeToToken (MatrixInt (l, c, m)) = IntMatrix (0, 0)
+typeToToken (MatrixDouble (l, c, m)) = DoubleMatrix (0, 0)
 

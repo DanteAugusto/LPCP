@@ -25,3 +25,49 @@ invalidArgsProcedure (1, _, _, _) i j  = "Invalid number of arguments: expected 
 invalidArgsProcedure (2, i, _, _) _ _ = "Argument " ++ show i ++ " expected to be passed by reference."
 invalidArgsProcedure (3, i, _, _) _ _ = "Argument " ++ show i ++ " expected to be passed by value."
 invalidArgsProcedure (4, i, a, b) _ _ = "Argument " ++ show i ++ " expected to be of type " ++ show (typeToToken b) ++ " but received " ++ show (typeToToken a) ++ "."
+
+
+invalidUserTypeReturn :: Token -> String
+invalidUserTypeReturn id = "Invalid user type in return: " ++ show id ++ " not declared."
+
+invalidUserTypeParameter :: Token -> String
+invalidUserTypeParameter id = "Invalid user type in parameter: " ++ show id ++ " not declared."
+
+invalidRegisterAccess :: Token -> Token -> String
+invalidRegisterAccess id a = "Invalid register access: " ++ show id ++ " does not have attribute " ++ show a ++ "."
+
+isNotRegisterType :: Token -> String
+isNotRegisterType id = "Invalid register access: " ++ show id ++ " is not a register type."
+
+matrixPositiveIntegersAccess :: String
+matrixPositiveIntegersAccess = "Acessing a matrix requires positive integers as indexes."
+
+matrixAccessOutOfBounds :: String
+matrixAccessOutOfBounds = "Acessing a matrix out of bounds."
+
+-- algo = (Plus _) <|> (Minus _) <|> ...
+
+invalidOperation :: Token -> Token -> Token -> String
+invalidOperation a (Plus p) b = "Invalid operation: " ++ show (Plus p) ++ " " ++ " received incompatible types " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Minus p) b = "Invalid operation: " ++ show (Minus p) ++ " " ++ " required two operands of the same type (Int or Double), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Mult p) b = "Invalid operation: " ++ show (Mult p) ++ " " ++ " received incompatible types " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Divi p) b = "Invalid operation: " ++ show (Divi p) ++ " " ++ " required two operands of the same type (Int or Double), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Mod p) b = "Invalid operation: " ++ show (Mod p) ++ " " ++ " required two operands of the same type (Int), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Expo p) b = "Invalid operation: " ++ show (Expo p) ++ " " ++ " required two operands of the same type (Int or Double), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Lesser p) b = "Invalid operation: " ++ show (Lesser p) ++ " " ++ " required two operands of the same type (Int or Double), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Greater p) b = "Invalid operation: " ++ show (Greater p) ++ " " ++ " required two operands of the same type (Int or Double), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (LessEq p) b = "Invalid operation: " ++ show (LessEq p) ++ " " ++ " required two operands of the same type (Int or Double), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (GreatEq p) b = "Invalid operation: " ++ show (GreatEq p) ++ " " ++ " required two operands of the same type (Int or Double), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Eq p) b = "Invalid operation: " ++ show (Eq p) ++ " " ++ " required two operands of the same type (Int, Double or Bool), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Diff p) b = "Invalid operation: " ++ show (Diff p) ++ " " ++ " required two operands of the same type (Int, Double or Bool), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (And p) b = "Invalid operation: " ++ show (And p) ++ " " ++ " required two operands of the same type (Bool), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (Or p) b = "Invalid operation: " ++ show (Or p) ++ " " ++ " required two operands of the same type (Bool), but received " ++ show a ++ " and " ++ show b ++ "."
+invalidOperation a (PlusMatrix p) b = "Invalid operation: " ++ show (PlusMatrix p) ++ " " ++ " required two matrixes of equal dimensions and of the same type (IntMatrix or DoubleMatrix)."
+invalidOperation a (MultMatrix p) b = "Invalid operation: " ++ show (MultMatrix p) ++ " " ++ " required two matrixes of compatible dimensions (collums of first equal to lines of second) and of the same type (IntMatrix or DoubleMatrix)."
+invalidOperation _ _ _ = "Invalid operation: unknown error."
+
+invalidUnaryOperation :: Token -> Token -> String
+invalidUnaryOperation (Plus p) a = "Invalid operation: " ++ show (Plus p) ++ " " ++ " required an operand of type Int or Double, but received " ++ show a ++ "."
+invalidUnaryOperation (Minus p) a = "Invalid operation: " ++ show (Minus p) ++ " " ++ " required an operand of type Int or Double, but received " ++ show a ++ "."
+invalidUnaryOperation (Neg p) a = "Invalid operation: " ++ show (Neg p) ++ " " ++ " required an operand of type Bool, but received " ++ show a ++ "."
+invalidUnaryOperation _ _ = "Invalid operation: unknown error."

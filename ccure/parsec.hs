@@ -9,6 +9,7 @@
 module Main (main) where
 
 import Compatibles
+import Conversions
 import Lexer
 import State
 import Tokens
@@ -234,7 +235,7 @@ functionDecl = do
 
                 let paramsToParse = [(x, y) | (x, y, _) <- fst d]
                 if(isRegister g) then do
-                  if(not $ isInUserTypes g s) then fail "Invalid return type in function declaration"
+                  if(not $ isInUserTypes g s) then fail (invalidUserTypeReturn g)
                   else do
                     -- liftIO (print "quem eh o body da funcao cara")
                     -- liftIO (print $ h ++ [i])
@@ -276,7 +277,7 @@ parDec = do
 
                 s <- getState
                 if(isRegister a) then do
-                  if(not $ isInUserTypes a s) then fail "Invalid param type in function declaration"
+                  if(not $ isInUserTypes a s) then fail (invalidUserTypeParameter a)
                   else
                     return ([(b, getUserType a s, True)], [ref, a, b])
                 else
@@ -288,7 +289,7 @@ parDec = do
 
                   s <- getState
                   if(isRegister a) then do
-                    if(not $ isInUserTypes a s) then fail "Invalid param type in function declaration"
+                    if(not $ isInUserTypes a s) then fail (invalidUserTypeParameter a)
                     else
                       return ([(b, getUserType a s, False)], [a, b])
                   else
@@ -361,7 +362,7 @@ attributeRegisterParser id = do
 
                         -- let j = removeQuotes d -- Usado para tirar "" de string
                         -- liftIO(print c)
-                        if (not (compatible_varDecl a d)) then fail "type error on declaration"
+                        if (not (compatible_varDecl a d)) then fail (typeErrorMessage a (fst d))
                         else
                           do
                             s <- getState
@@ -383,10 +384,10 @@ registerAccess id = do
                         let currDepth = getCurrentDepth s
                         let reg = getMayb (symtable_get (id, currDepth) s)
                         -- Verificar se reg é um RegisterType
-                        if(not $ isRegisterType reg) then do error "Invalid register access"
+                        if(not $ isRegisterType reg) then do error (isNotRegisterType id)
                         else do
                           -- Verificar se b é um atributo de reg
-                          if(not $ isRegAttr b reg ) then error "Invalid attribute access on register"
+                          if(not $ isRegAttr b reg ) then fail (invalidRegisterAccess (typeToToken reg) b)
                           else do
                               return (getRegAttr b reg, id:a:[b])
                       else do
@@ -405,12 +406,12 @@ registerAssign id = do
                         let currDepth = getCurrentDepth s
                         let reg = getMayb (symtable_get (id, currDepth) s)
                         -- Verificar se reg é um RegisterType
-                        if(not $ isRegisterType reg) then fail "Invalid register access"
-                        else
+                        if(not $ isRegisterType reg) then fail (isNotRegisterType id)
+                        else do
                           -- Verificar se b é um atributo de reg
-                          if(not $ isRegAttr b reg ) then fail "Invalid attribute access on register"
+                          if(not $ isRegAttr b reg ) then fail (invalidRegisterAccess (typeToToken reg) b)
                           else
-                            if (not (compatible (getRegAttr b reg, []) d)) then fail "type error on assign"
+                            if (not (compatible (getRegAttr b reg, []) d)) then fail (typeErrorMessage (typeToToken(getRegAttr b reg)) (fst d))
                             else
                               do
                                 updateState (symtable_update_reg_attr (id, currDepth, b, fst d))
@@ -465,9 +466,9 @@ matrixAcces id = do
                 if(execOn s) then do
                   let currDepth = getCurrentDepth s
                   let matrix = getMayb (symtable_get (id, currDepth) s)
-                  if not $ validAccess (fst x) (fst y) then fail "Negative indexes, access is not allowed"
+                  if not $ validAccess (fst x) (fst y) then fail matrixPositiveIntegersAccess
                   else
-                    if(not $ canAccesMatrix (fst x) (fst y) matrix) then fail "Invalid indexes on trying to access matrix"
+                    if(not $ canAccesMatrix (fst x) (fst y) matrix) then fail matrixAccessOutOfBounds
                     else
                       return (getValFromMatrix (fst x) (fst y) matrix, id:[ob1] ++ (snd x) ++ cb1:[ob2] ++ (snd y) ++ [cb2])
                 else
@@ -479,7 +480,7 @@ eval_remaining_matrix m1 operator remain = (do
                                 m2 <- remain
                                 s <- getState
                                 if (execOn s) then do
-                                  if (not (compatible_op m1 op m2)) then fail "type error on evaluating expression"
+                                  if (not (compatible_op m1 op m2)) then fail (invalidOperation (typeToToken(fst m1)) op (typeToToken(fst m2)))
                                   else
                                     do
                                       result <- eval_remaining_matrix (eval m1 op m2 (execOn s)) operator remain
@@ -905,7 +906,12 @@ neg_expression = (do
                     op <- negToken
                     rel <- rel_expression
                     s <- getState
-                    return (eval_unary op rel (execOn s))) <|>
+                    if(execOn s) then do
+                      if(not $ compatible_op_unary op rel) then fail (invalidUnaryOperation op (typeToToken (fst rel)))
+                      else
+                        return (eval_unary op rel (execOn s))
+                    else
+                      return (eval_unary op rel (execOn s))) <|>
                   (do
                     a <- rel_expression
                     return a)
@@ -1172,7 +1178,7 @@ eval_remaining n1 operator remain = (do
                                 n2 <- remain
                                 s <- getState
                                 if (execOn s) then do
-                                  if (not (compatible_op n1 op n2)) then fail "type error on evaluating expression"
+                                  if (not (compatible_op n1 op n2)) then fail (invalidOperation (typeToToken(fst n1)) op (typeToToken(fst n2)))
                                   else
                                     do
                                       result <- eval_remaining (eval n1 op n2 (execOn s)) operator remain
@@ -1189,7 +1195,7 @@ eval_remaining_right n1 operator remain = (do
                                 s <- getState
                                 result <- eval_remaining_right n2 operator remain
                                 if(execOn s) then do
-                                  if (not (compatible_op n1 op n2)) then fail "type error on evaluating expression"
+                                  if (not (compatible_op n1 op n2)) then fail (invalidOperation (typeToToken(fst n1)) op (typeToToken(fst n2)))
                                   else
                                     do
                                       return (eval n1 op result (execOn s))

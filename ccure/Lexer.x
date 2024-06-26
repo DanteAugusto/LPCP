@@ -143,6 +143,8 @@ data Token =
   Comma                (Int, Int)        |
   Int                  (Int, Int)        |
   Matrix               (Int, Int)        |
+  IntMatrix            (Int, Int)        |
+  DoubleMatrix         (Int, Int)        |
   Double               (Int, Int)        |
   Bool                 (Int, Int)        |
   Str                  (Int, Int)        |
@@ -210,9 +212,11 @@ instance Show Token where
   show (Comma p) = "Comma"
   show (Int p) = "Int"
   show (Matrix p) = "Matrix"
+  show (IntMatrix p) = "MatrixInt"
+  show (DoubleMatrix p) = "MatrixDouble"
   show (Double p) = "Double"
   show (Bool p) = "Bool"
-  show (Str p) = "Str"
+  show (Str p) = "String"
   show (Ref p) = "Ref"
   show (Cast p) = "Cast"
   show (Default p) = "Default"
