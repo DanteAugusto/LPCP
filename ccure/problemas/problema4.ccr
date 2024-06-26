@@ -90,10 +90,27 @@ program
     Rational_t c = build_rational(1, 2);
     Rational_t d = build_rational(2, 4);
 
-    puts("a = 1/2\n");
-    puts("b = 1/3\n");
-    puts("c = 1/2\n");
-    puts("d = 2/4\n");
+
+    puts("a = ");
+    puts(a->numerador);
+    puts("/");
+    puts(a->denominador);
+    puts("\n");
+    puts("b = ");
+    puts(b->numerador);
+    puts("/");
+    puts(b->denominador);
+    puts("\n");
+    puts("c = ");
+    puts(c->numerador);
+    puts("/");
+    puts(c->denominador);
+    puts("\n");
+    puts("d = ");
+    puts(d->numerador);
+    puts("/");
+    puts(d->denominador);
+    puts("\n");
 
     puts("a == b: ");
     puts(is_same_rational(a, b));

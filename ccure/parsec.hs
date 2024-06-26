@@ -492,6 +492,7 @@ eval_remaining_matrix m1 operator remain = (do
 
 matrixDecl :: ParsecT [Token] CCureState IO([Token])
 matrixDecl = do
+              -- liftIO (print "matrixDecl")
               -- matrix<linha, coluna, tipo(int ou double)> m = 0;
               mat <- matrixToken
 
@@ -536,6 +537,7 @@ matrixDecl = do
 
 registerDecl :: ParsecT [Token] CCureState IO([Token])
 registerDecl = do
+              -- liftIO (print "registerDecl")
               a <- typeIdToken
               b <- idToken
               c <- assignToken
@@ -592,13 +594,13 @@ defaultParser typeid id = do
 
 varDecl :: ParsecT [Token] CCureState IO([Token])
 varDecl = do
+            -- liftIO (print "varDecl")
             a <- typeToken
             b <- idToken
             c <- assignToken
             d <- expression
               -- liftIO (print "olha a expressao ai o")
               -- liftIO (print d)
-            e <- semiColonToken
             s <- getState
 
             if(execOn s) then do
@@ -620,8 +622,10 @@ varDecl = do
                   s <- getState
                   -- liftIO (print s)
                   -- liftIO (print "chomsky4")
+                  e <- semiColonToken
                   return (a:b:[c] ++ (snd d) ++ [e])
-            else
+            else do
+              e <- semiColonToken
               return (a:b:[c] ++ (snd d) ++ [e])
 
 -- removeQuotes :: (Type, [Token]) -> (Type, [Token])
@@ -635,7 +639,7 @@ stmts = do
           return (first ++ next)
 
 stmt :: ParsecT [Token] CCureState IO([Token])
-stmt = try varDecl <|> matrixDecl <|> registerDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> breakStmt <|> returnStmt
+stmt = varDecl <|> matrixDecl <|> registerDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> breakStmt <|> returnStmt
 
 remainingStmts :: ParsecT [Token] CCureState IO([Token])
 remainingStmts = (do
@@ -645,6 +649,7 @@ remainingStmts = (do
 
 printPuts :: ParsecT [Token] CCureState IO([Token])
 printPuts = do
+              -- liftIO (print "printPuts")
               a <- putsToken
               b <- openParentToken
               c <- expression
@@ -674,17 +679,24 @@ matrixStup id = do
 
                   if(execOn s) then do
                     input <- liftIO (getLine)
-                    let strConverted = convertStringToType input e
-                    let currentDepth = getCurrentDepth s
-                    let matrix = getMayb (symtable_get (id, currentDepth) s)
-                    if not $ validAccess xt yt then fail matrixPositiveIntegersAccess
-                    else
-                      if(not $ canAccesMatrix xt yt matrix) then fail matrixAccessOutOfBounds
-                      else
-                        if(not (compatible_matrix (get_type id s, []) (strConverted, []) )) then fail (typeErrorMessage (typeToToken(get_type id s)) strConverted)
-                        else do
-                          updateState (symtable_update_matrix (id, currentDepth, getValFromType xt, getValFromType yt, strConverted))
-                          return (id:[ob1] ++ xx ++ cb1:[ob2] ++ yy ++ [cb2])
+
+                    -- Check if id is on symtable
+                    if(not $ isInSymTable (id, (getCurrentDepth s), getCurrentScope s) s) then fail (notDeclaredError (getStringFromIdToken id))
+                    else do
+                      -- Check if string from input can be converted to e
+                      if(not $ canConvertStringToType input e) then fail (typeErrorInput e input)
+                      else do
+                        let strConverted = convertStringToType input e
+                        let currentDepth = getCurrentDepth s
+                        let matrix = getMayb (symtable_get (id, currentDepth) s)
+                        if not $ validAccess xt yt then fail matrixPositiveIntegersAccess
+                        else
+                          if(not $ canAccesMatrix xt yt matrix) then fail matrixAccessOutOfBounds
+                          else
+                            if(not (compatible_matrix (get_type id s, []) (strConverted, []) )) then fail (typeErrorMessage (typeToToken(get_type id s)) strConverted)
+                            else do
+                              updateState (symtable_update_matrix (id, currentDepth, getValFromType xt, getValFromType yt, strConverted))
+                              return (id:[ob1] ++ xx ++ cb1:[ob2] ++ yy ++ [cb2])
                   else
                     return (id:[ob1] ++ xx ++ cb1:[ob2] ++ yy ++ [cb2])
 
@@ -698,6 +710,7 @@ getStringFromIdToken _        = ""
 
 readStup :: ParsecT [Token] CCureState IO([Token])
 readStup = do
+              -- liftIO (print "readStup")
               a <- stupToken
               b <- openParentToken
               c <- idToken
@@ -711,13 +724,27 @@ readStup = do
                         s <- getState
                         if(execOn s) then do
                           input <- liftIO (getLine)
-                          let strConverted = convertStringToType input e
-                          if(not (compatible (get_type c s, []) (strConverted, []) )) then fail (typeErrorMessage (typeToToken(get_type c s)) strConverted)
+
+                          -- Check if id is already declared
+                          if(not $ isInSymTable (c, (getCurrentDepth s), getCurrentScope s) s) then fail (notDeclaredError (getStringFromIdToken c))
                           else do
-                            updateState (symtable_update (c, getCurrentDepth s ,strConverted))
-                            return (a:b:c:d:e:f:[g])
+                            -- Check if string from input can be converted to e
+                            if(not $ canConvertStringToType input e) then fail (typeErrorInput e input)
+                            else do
+                              let strConverted = convertStringToType input e
+                              if(not (compatible (get_type c s, []) (strConverted, []) )) then fail (typeErrorMessage (typeToToken(get_type c s)) strConverted)
+                              else do
+                                updateState (symtable_update (c, getCurrentDepth s ,strConverted))
+                                return (a:b:c:d:e:f:[g])
 
                         else return (a:b:c:d:e:f:[g])
+
+canConvertStringToType :: String -> Token -> Bool
+canConvertStringToType x (Double _) = isRight (readDouble x)
+canConvertStringToType x (Int _) = isRight (readInt x)
+canConvertStringToType x (Bool _) = (x == "True") || (x == "False")
+canConvertStringToType x (Str _) = True
+canConvertStringToType _ _ = False
 
 convertStringToType :: String -> Token -> Type
 convertStringToType x (Double _) =
@@ -745,6 +772,7 @@ readDouble str = readEither str
 
 whileStmt :: ParsecT [Token] CCureState IO([Token])
 whileStmt = do
+              -- liftIO (print "whileStmt")
               -- s <- getState
               -- liftIO(print s)
               pc <- getInput
@@ -814,6 +842,7 @@ whileStmt = do
 
 breakStmt :: ParsecT [Token] CCureState IO([Token])
 breakStmt = do
+              -- liftIO (print "breakStmt")
               a <- breakToken
               b <- semiColonToken
 
@@ -841,6 +870,7 @@ breakStmt = do
 
 returnStmt :: ParsecT [Token] CCureState IO([Token])
 returnStmt = do
+              -- liftIO (print "returnStmt")
               a <- returnToken
               b <- expression
               c <- semiColonToken
@@ -867,6 +897,7 @@ getReturnType scope s = getMayb (symtable_get (Id "$ret" (0, 0), getCurrentDepth
 
 assign :: ParsecT [Token] CCureState IO([Token])
 assign = do
+          -- liftIO (print "assign")
           a <- idToken
           -- liftIO (print "olha aqindmasldm")
           try (registerAssign a)
@@ -879,15 +910,18 @@ assign = do
                   d <- semiColonToken
                   s <- getState
                   if(execOn s) then do
+                    -- Check if a was already declared
+                    if(not $ isInSymTable (a, (getCurrentDepth s), getCurrentScope s) s) then fail (notDeclaredError (getStringFromIdToken a))
+                    else do
                     -- let j = removeQuotes c -- Usado para tirar "" de string
                     -- liftIO(print c)
-                    if (not (compatible (get_type a s, []) c)) then fail (typeErrorMessage (typeToToken(get_type a s)) (fst c))
-                    else
-                      do
-                        updateState (symtable_update (a, getCurrentDepth s, fst c))
-                        -- s <- getState
-                        -- liftIO (print s)
-                        return (a:[b] ++ (snd c) ++ [d])
+                      if (not (compatible (get_type a s, []) c)) then fail (typeErrorMessage (typeToToken(get_type a s)) (fst c))
+                      else
+                        do
+                          updateState (symtable_update (a, getCurrentDepth s, fst c))
+                          -- s <- getState
+                          -- liftIO (print s)
+                          return (a:[b] ++ (snd c) ++ [d])
                   else
                     return (a:[b] ++ (snd c) ++ [d]))
 
@@ -1066,8 +1100,10 @@ functionCall id = do
                         setInput (getBodyFromFunc func ++ nextStmts)
                         -- liftIO (print "quem sao meus args cara")
                         -- liftIO (print (fst b))
-                        -- liftIO (print "obriggado cara")
+                        -- liftIO (print "obriggado cara1")
                         returnFromFunc <- execFunction func (fstb)
+                        -- liftIO (print "obriggado cara2")
+
 
                         return (returnFromFunc, id:a:(snd b) ++ [c])
 
@@ -1125,7 +1161,7 @@ execFunction (name, pc, ret, formalArgs) realArgs =
 
 
 args :: ParsecT [Token] CCureState IO([(Token, String, Int, Type)],[Token])
-args = try (do
+args = (do
             a <- expression
             b <- remainingArgs
             return ((Id "$notref" (0,0), "noscope", -1, fst a):(fst b), (snd a) ++ (snd b))) <|>
@@ -1147,7 +1183,7 @@ args = try (do
 
 
 remainingArgs :: ParsecT [Token] CCureState IO([(Token, String, Int, Type)], [Token])
-remainingArgs = try (do
+remainingArgs = (do
                   comma <- commaToken
                   a <- expression
                   b <- remainingArgs
@@ -1171,14 +1207,17 @@ remainingArgs = try (do
 variableParser :: ParsecT [Token] CCureState IO(Type, [Token])
 variableParser = do
                   id <- idToken
-                  try (matrixAcces id)
+                  (matrixAcces id)
                     <|> (registerAccess id)
                     <|> (functionCall id)
                     <|>
                     (do
                       s <- getState
                       if(execOn s) then
-                        return (getMayb (symtable_get (id, getCurrentDepth s) s), [id])
+                        -- Check if id was not declared
+                        if(not $ isInSymTable (id, (getCurrentDepth s), getCurrentScope s) s) then fail (notDeclaredError (getStringFromIdToken id))
+                        else do
+                          return (getMayb (symtable_get (id, getCurrentDepth s) s), [id])
                       else
                         return (NULL, [id]))
 

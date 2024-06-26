@@ -9,3 +9,7 @@ extractThird3 (_, _, c) = c
 
 extractFourth4 :: (a, b, c, d) -> d
 extractFourth4 (_, _, _, d) = d
+
+isRight :: Either a b -> Bool
+isRight (Right _) = True
+isRight (Left _) = False

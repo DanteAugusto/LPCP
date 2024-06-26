@@ -7,14 +7,17 @@ import Conversions
 alreadyDeclaredError :: String -> String
 alreadyDeclaredError var = "Variable \"" ++ var ++ "\" already declared. Remember: for your CCurence, we do not support shadowing!"
 
+notDeclaredError :: String -> String
+notDeclaredError var = "Variable \"" ++ var ++ "\" not declared."
+
 typeErrorMessage :: Token -> Type -> String
 typeErrorMessage expectedType receivedType = "Type error: expected " ++ show expectedType ++ " but received " ++ show (typeToToken receivedType) ++ "."
 
 typeErrorReturn :: Token -> Type -> String
 typeErrorReturn expectedType receivedType = "Type error: expected " ++ show expectedType ++ " but received " ++ show (typeToToken receivedType) ++ "."
 
--- typeErrorInput :: Token -> String
--- typeErrorInput id = "Type error: couldn't convert input to be of type Int or Double, but received " ++ show id ++ "."
+typeErrorInput :: Token -> String -> String
+typeErrorInput id input = "Type error: couldn't convert input \""++ input ++"\" to be of type " ++ show id ++ "."
 
 invalidProcedureCall :: Token -> String
 invalidProcedureCall id = "Invalid procedure call: " ++ show id ++ " not declared."
