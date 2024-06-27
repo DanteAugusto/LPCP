@@ -112,6 +112,11 @@ breakOutOfLoopError = "Break statement outside of loop."
 returnOutOfFunctionError :: String
 returnOutOfFunctionError = "Return statement outside of function."
 
+duplicateParamsError :: String
+duplicateParamsError = "Duplicate parameters in function declaration."
+
+duplicateParamsErrorProc :: String
+duplicateParamsErrorProc = "Duplicate parameters in procedure declaration."
 
 castError :: Token -> Token -> String
 castError a b = "Cast error: cannot cast " ++ show a ++ " to " ++ show b ++ ". Only widening casts are allowed."

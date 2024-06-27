@@ -93,20 +93,13 @@ procDecl = do
                 i <- endProcToken
 
                 s <- getState
-                updateState (insertUserProc (b, h ++ [i], fst d))
-                return (a:b:[c] ++ (snd d) ++ [e] ++ h ++ [i])
-
-                -- if(isRegister g) then do
-                --   if(not $ isInUserTypes g s) then fail "Invalid return type in function declaration"
-                --   else do
-                --     updateState(insertUserFunction (b, h ++ [i], getUserType g s, fst d))
-                --     return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
-                -- else do
-              
-              
-              
-                --   updateState(insertUserFunction (b, h ++ [i], tokenToType2 g, fst d))
-                --   return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                
+                -- verify if has duplicate params 
+                let paramsNames = [x | (x, _, _) <- fst d]
+                if (hasDuplicateParams paramsNames) then fail duplicateParamsErrorProc
+                else do
+                  updateState (insertUserProc (b, h ++ [i], fst d))
+                  return (a:b:[c] ++ (snd d) ++ [e] ++ h ++ [i])
 
 procedureCall :: Token -> ParsecT [Token] CCureState IO([Token])
 procedureCall id = do
@@ -215,14 +208,18 @@ functionDecl = do
                 s <- getState
 
                 let paramsToParse = [(x, y) | (x, y, _) <- fst d]
-                if(isRegister g) then do
-                  if(not $ isInUserTypes g s) then fail (invalidUserTypeReturn g)
-                  else do
-                    updateState (insertUserFunction (b, h ++ [i], getUserType g s, paramsToParse))
-                    return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                let paramsNames = [x | (x, _, _) <- fst d]
+
+                if (hasDuplicateParams paramsNames) then fail duplicateParamsError
                 else do
-                  updateState (insertUserFunction (b, h ++ [i], tokenToType2 g, paramsToParse))
-                  return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                  if(isRegister g) then do
+                    if(not $ isInUserTypes g s) then fail (invalidUserTypeReturn g)
+                    else do
+                      updateState (insertUserFunction (b, h ++ [i], getUserType g s, paramsToParse))
+                      return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                  else do
+                    updateState (insertUserFunction (b, h ++ [i], tokenToType2 g, paramsToParse))
+                    return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
 
 isRegister :: Token -> Bool
 isRegister (TypeId id p) = True

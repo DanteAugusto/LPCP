@@ -8,6 +8,7 @@ program
             -- a = a + 1;
             break;
         else
+            break;
             --puts(a);
         endIf
     endWhile

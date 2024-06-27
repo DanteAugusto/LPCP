@@ -36,6 +36,16 @@ isInUserFunctionsAux _ [] = False
 isInUserFunctionsAux (Id id p) ( (Id id1 p1, _, _, _):t ) = (id == id1) || isInUserFunctionsAux (Id id p) t
 isInUserFunctionsAux _ _ = error "isInUserFunctionsAux: unexpected pattern"
 
+hasDuplicateParams :: [Token] -> Bool
+hasDuplicateParams [] = False
+hasDuplicateParams (Id id p:as) = hasDuplicateParamsAux (Id id p) as || hasDuplicateParams as
+hasDuplicateParams _ = error "hasDuplicateParams: unexpected pattern"
+
+hasDuplicateParamsAux :: Token -> [Token] -> Bool
+hasDuplicateParamsAux _ [] = False
+hasDuplicateParamsAux (Id id p) (Id id1 p1:as) = (id == id1) || hasDuplicateParamsAux (Id id p) as
+hasDuplicateParamsAux _ _ = error "hasDuplicateParamsAux: unexpected pattern"
+
 isInUserProcsAux :: Token -> [UserProc] -> Bool
 isInUserProcsAux _ [] = False
 isInUserProcsAux (Id id p) ( (Id id1 p1, _, _):t ) = (id == id1) || isInUserProcsAux (Id id p) t
