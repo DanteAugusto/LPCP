@@ -894,7 +894,8 @@ returnStmt = do
               c <- semiColonToken
               s <- getState
               if(execOn s) then do
-                if(getLastScop (getCurrentScope s) == "program") then fail returnOutOfFunctionError
+                let lastScop = getLastScop (getCurrentScope s)
+                if(lastScop == "program" || isInUserProcs (Id lastScop (0,0)) s) then fail returnOutOfFunctionError
                 else do
                   let ret = getReturnType (getCurrentScope s) s
                   if(not (compatible b (ret, []))) then fail (typeErrorReturn (typeToToken ret) (fst b))

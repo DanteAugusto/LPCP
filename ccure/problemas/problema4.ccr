@@ -1,7 +1,7 @@
 typeDeclarations
     register Rational_t
-        int numerador = 0;
-        int denominador = 1;
+        int numerador = 1;
+        int denominador = 2;
     endRegister
 endTypeDeclarations
 
