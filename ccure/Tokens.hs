@@ -313,6 +313,21 @@ stringLitToken = tokenPrim show update_pos get_token where
   get_token (StringLit x p) = Just (StringLit x p)
   get_token _      = Nothing
 
+ifToken :: ParsecT [Token] st IO (Token)
+ifToken = tokenPrim show update_pos get_token where
+  get_token (If p) = Just (If p)
+  get_token _      = Nothing
+
+elseToken :: ParsecT [Token] st IO (Token)
+elseToken = tokenPrim show update_pos get_token where
+  get_token (Else p) = Just (Else p)
+  get_token _      = Nothing
+
+endIfToken :: ParsecT [Token] st IO (Token)
+endIfToken = tokenPrim show update_pos get_token where
+  get_token (EndIf p) = Just (EndIf p)
+  get_token _      = Nothing
+
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
 update_pos pos _ ((Int (l,c)):_) = setSourceLine (setSourceColumn pos c) l
 update_pos pos _ ((Double (l,c)):_) = setSourceLine (setSourceColumn pos c) l
@@ -375,4 +390,7 @@ update_pos pos _ ((Eq p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p
 update_pos pos _ ((Diff p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
 update_pos pos _ ((Neg p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
 update_pos pos _ ((StringLit _ (l,c)):_) = setSourceLine (setSourceColumn pos c) l
+update_pos pos _ ((If p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Else p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((EndIf p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
 update_pos pos _ []      = pos  

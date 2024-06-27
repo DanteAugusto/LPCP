@@ -44,6 +44,10 @@ tokens :-
   continue                        { \p s -> Continue (getLC p) }
   break                           { \p s -> Break (getLC p) }
 
+  if                              { \p s -> If (getLC p) }
+  else                            { \p s -> Else (getLC p) }
+  endIf                           { \p s -> EndIf (getLC p) }
+
   ";"                             { \p s -> Semicolon (getLC p) }
   "->"                            { \p s -> Arrow (getLC p) }
   "<+>"                           { \p s -> PlusMatrix (getLC p) }
@@ -116,6 +120,9 @@ data Token =
   EndWhile             (Int, Int)        |
   Continue             (Int, Int)        |
   Break                (Int, Int)        |
+  If                   (Int, Int)        |
+  Else                 (Int, Int)        |
+  EndIf                (Int, Int)        |
   Semicolon            (Int, Int)        |
   Arrow                (Int, Int)        |
   PlusMatrix           (Int, Int)        |
@@ -225,6 +232,9 @@ instance Show Token where
   show (StringLit v p) = "String"
   show (Id v p) = show v
   show (TypeId v p) = show v
+  show (If p) = "If"
+  show (Else p) = "Else"
+  show (EndIf p) = "EndIf"
 
 -- "<"                             { \p s -> Lesser (getLC p) }
 --   ">"                             { \p s -> Greater (getLC p) }
