@@ -6,6 +6,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Use bimap" #-}
+{-# HLINT ignore "Redundant if" #-}
 module Main (main) where
 
 import Compatibles
@@ -639,7 +640,7 @@ stmts = do
           return (first ++ next)
 
 stmt :: ParsecT [Token] CCureState IO([Token])
-stmt = varDecl <|> matrixDecl <|> registerDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> breakStmt <|> returnStmt
+stmt = varDecl <|> matrixDecl <|> registerDecl <|> assign <|> printPuts <|> readStup <|> whileStmt <|> ifStmt <|> breakStmt <|> returnStmt
 
 remainingStmts :: ParsecT [Token] CCureState IO([Token])
 remainingStmts = (do
@@ -770,6 +771,79 @@ readInt str = readEither str
 readDouble :: String -> Either String Double
 readDouble str = readEither str
 
+ifStmt :: ParsecT [Token] CCureState IO([Token])
+ifStmt = do
+            -- liftIO (print "ifStmt")
+            a <- ifToken
+            b <- enclosed_exp
+            s <- getState
+
+            -- if (exp)
+
+            -- else <|> []
+
+            -- endIf
+
+            if(execOn s) then
+              if( not (compatible b (BoolType True, []) ) ) then fail (controlNotBoolError (typeToToken(fst b)))
+              else do
+                if(get_bool_value (fst b)) then do -- se a condicao do if eh true
+                  updateState (addToScopeStack "if") -- adiciona o escopo do if
+                 
+                  c <- stmts -- executa os stmts
+                  
+                  s <- getState
+                  if(execOn s) then do 
+                    updateState(turnExecOff) -- desativa a execução pra passar pelo else
+
+                    d <- elseOrNothingStmt -- passa pelo else com exec off
+                    e <- endIfToken -- fim do if
+                      
+                    updateState(turnExecOn) -- liga a exec dnv
+                    
+                    s <- getState
+                    updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
+                    updateState(removeFromScopeStack)
+                    return (a:(snd b) ++ c ++ d ++ [e])
+                  else do
+                    d <- elseOrNothingStmt -- passa pelo else com exec off
+                    e <- endIfToken -- fim do if
+                    return (a:(snd b) ++ c ++ d ++ [e])
+
+
+                else do -- se a condicao do if eh false
+                  updateState (turnExecOff) -- desativa a exec pra passar pelo corpo do if
+
+                  c <- stmts -- passa pelo corpo do if
+
+                  updateState(turnExecOn) -- liga a exec pra executar o else ou ir simbora
+                  updateState (addToScopeStack "else") -- adiciona o else no escopo
+                  d <- elseOrNothingStmt
+                  e <- endIfToken
+                  
+                  s <- getState
+                  updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
+                  updateState (removeFromScopeStack) -- remove o else do escopo
+                  
+                  return (a:(snd b) ++ c ++ d ++ [e]) 
+            else do
+              c <- stmts
+              d <- elseOrNothingStmt
+              e <- endIfToken
+              return (a:(snd b) ++ c ++ d ++ [e])
+
+elseOrNothingStmt :: ParsecT [Token] CCureState IO([Token])
+elseOrNothingStmt = (do
+                      a <- elseToken
+                      s <- getState
+                      if(execOn s) then do -- se a exec tiver on  
+                        b <- stmts -- executa o corpo do else
+                        return (a:b)
+                      else do
+                        b <- stmts
+                        return (a:b))
+                      <|> return []
+                      
 whileStmt :: ParsecT [Token] CCureState IO([Token])
 whileStmt = do
               -- liftIO (print "whileStmt")
@@ -803,6 +877,7 @@ whileStmt = do
                       -- Se foi um break, acaba o loop
                       if((getCurrentLoopStatus s) == BREAK) then do
                         updateState (turnExecOn)
+                        -- liftIO (print $ getCurrentScope s)
                         s <- getState
                         updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
                         updateState (removeFromScopeStack)
@@ -854,7 +929,7 @@ breakStmt = do
                 s <- getState
 
 
-                if((getTopScope s)== "while") then do
+                if(isInCurrentScope "while" s) then do
                   updateState (turnExecOff)
                   -- updateState((addToLoopStack.removeFromLoopStack) BREAK)
                   updateState (removeFromLoopStack)
@@ -1161,7 +1236,7 @@ execFunction (name, pc, ret, formalArgs) realArgs =
 
 
 args :: ParsecT [Token] CCureState IO([(Token, String, Int, Type)],[Token])
-args = (do
+args = try (do
             a <- expression
             b <- remainingArgs
             return ((Id "$notref" (0,0), "noscope", -1, fst a):(fst b), (snd a) ++ (snd b))) <|>
@@ -1183,7 +1258,7 @@ args = (do
 
 
 remainingArgs :: ParsecT [Token] CCureState IO([(Token, String, Int, Type)], [Token])
-remainingArgs = (do
+remainingArgs = try (do
                   comma <- commaToken
                   a <- expression
                   b <- remainingArgs

@@ -15,7 +15,7 @@ data Type =
     IntType Int |
     BoolType Bool |
     StringType String |
-    RegisterType (Token, [(Token, Type)]) | 
+    RegisterType (Token, [(Token, Type)]) |
     PointerType (Type, (String, String)) |
     ArrayType (Int, [Type]) |
     MatrixInt (Int, Int, [[Int]]) |
@@ -92,6 +92,15 @@ getCurrentScope _ = error "trying to access unexistent scope"
 
 getTopScope :: CCureState -> String
 getTopScope a = takeWhile (/= '#') (getCurrentScope a)
+
+-- split a string in a giver char
+split :: Char -> String -> [String]
+split _ [] = []
+split c s = x : split c (drop 1 y) where (x,y) = span (/= c) s
+
+-- check if a give string is substing of the current scope
+isInCurrentScope :: String -> CCureState -> Bool
+isInCurrentScope a b = a `elem` split '#' (getCurrentScope b)
 
 getLastScop :: String -> String
 getLastScop a = reverse $ takeWhile (/= '#') $ reverse a
