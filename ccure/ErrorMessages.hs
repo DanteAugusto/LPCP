@@ -7,6 +7,12 @@ import Conversions
 alreadyDeclaredError :: String -> String
 alreadyDeclaredError var = "Variable \"" ++ var ++ "\" already declared. Remember: for your CCurence, we do not support shadowing!"
 
+alreadyDeclaredAttrError :: String -> String
+alreadyDeclaredAttrError var = "Attribute \"" ++ var ++ "\" already declared."
+
+alreadyDeclaredRegisterError :: String -> String
+alreadyDeclaredRegisterError var = "Register \"" ++ var ++ "\" already declared."
+
 notDeclaredError :: String -> String
 notDeclaredError var = "Variable \"" ++ var ++ "\" not declared."
 

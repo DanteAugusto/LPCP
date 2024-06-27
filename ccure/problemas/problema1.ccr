@@ -1,7 +1,7 @@
 program
-	double x = 2.5;
-    double y = 3.0/5.0;
-	int c = 3;
+	double x = 5.4;
+    double y = 3.3/5.2;
+	int c = 67;
 
 	puts(x);
 	puts("^2.0 - ");

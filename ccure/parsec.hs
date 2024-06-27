@@ -301,10 +301,12 @@ typeDec = do
             a <- registerToken
             b <- typeIdToken
             s <- getState
-            updateState (insertUserType b)
-            c <- varDeclsRegister b
-            d <- endRegisterToken
-            return (a:[b] ++ c ++ [d])
+            if (isInUserTypes b s) then fail (alreadyDeclaredRegisterError (getStringFromIdToken b))
+            else do
+              updateState (insertUserType b)
+              c <- varDeclsRegister b
+              d <- endRegisterToken
+              return (a:[b] ++ c ++ [d])
 
 varDeclsRegister :: Token -> ParsecT [Token] CCureState IO ([Token])
 varDeclsRegister id = do
@@ -333,9 +335,12 @@ attributeRegisterParser id = do
                         else
                           do
                             s <- getState
-                            updateState ( addAttrToUserTypes id (b, fst d) )
-                            s <- getState
-                            return (a:b:[c] ++ (snd d) ++ [e])
+                            -- if the attribute is already in register, then fail
+                            if(isRegAttr b (getUserType id s)) then fail (alreadyDeclaredAttrError (getStringFromIdToken b))
+                            else do
+                              updateState ( addAttrToUserTypes id (b, fst d) )
+                              s <- getState
+                              return (a:b:[c] ++ (snd d) ++ [e])
 
 
 registerAccess :: Token -> ParsecT [Token] CCureState IO(Type, [Token])
@@ -656,6 +661,7 @@ getValFromType _           = 0
 
 getStringFromIdToken :: Token -> String
 getStringFromIdToken (Id x _) = x
+getStringFromIdToken (TypeId x _) = x
 getStringFromIdToken _        = ""
 
 readStup :: ParsecT [Token] CCureState IO([Token])
@@ -1177,11 +1183,12 @@ args = try (do
 remainingArgs :: ParsecT [Token] CCureState IO([(Token, String, Int, Type)], [Token])
 remainingArgs = try (do
                   comma <- commaToken
-                  a <- expression
-                  b <- remainingArgs
-                  return ((Id "$notref" (0,0), "noscope", -1, fst a):(fst b), [comma] ++ (snd a) ++ (snd b)))  <|>
+                  try (do 
+                        a <- expression
+                        b <- remainingArgs
+                        return ((Id "$notref" (0,0), "noscope", -1, fst a):(fst b), [comma] ++ (snd a) ++ (snd b))) 
+                   <|> 
                     (do
-                      comma <- commaToken
                       ref <- refToken
                       id <- idToken
                       b <- remainingArgs
@@ -1193,7 +1200,7 @@ remainingArgs = try (do
                         return ((symtable_get_info id (getCurrentDepth s) s): fst b, [comma, ref, id] ++ snd b)
                       else
                         return ((Id "$notref" (0,0), "noscope", -1, NULL): fst b, [comma, ref, id])
-                    )
+                    ))
                   <|> return ([], [])
 
 variableParser :: ParsecT [Token] CCureState IO(Type, [Token])
