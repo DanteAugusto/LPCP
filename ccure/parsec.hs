@@ -52,7 +52,6 @@ program = do
             updateState (removeFromScopeStack)
             eof
             -- s <- getState
-            -- liftIO (print s)
             return (a ++ [b] ++ c ++ [d])
 
 subprogramsDeclarations :: ParsecT [Token] CCureState IO ([Token])
@@ -94,9 +93,6 @@ procDecl = do
                 i <- endProcToken
 
                 s <- getState
-                -- liftIO (print "quem eh o body da funcao cara")
-                -- liftIO (print $ h ++ [i])
-                -- liftIO (print "obriado raleu cara")
                 updateState (insertUserProc (b, h ++ [i], fst d))
                 return (a:b:[c] ++ (snd d) ++ [e] ++ h ++ [i])
 
@@ -106,50 +102,34 @@ procDecl = do
                 --     updateState(insertUserFunction (b, h ++ [i], getUserType g s, fst d))
                 --     return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
                 -- else do
-                --   -- liftIO (print "quem eh o body da funcao cara")
-                --   -- liftIO (print $ h ++ [i])
-                --   -- liftIO (print "obriado raleu cara")
+              
+              
+              
                 --   updateState(insertUserFunction (b, h ++ [i], tokenToType2 g, fst d))
                 --   return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
 
 procedureCall :: Token -> ParsecT [Token] CCureState IO([Token])
 procedureCall id = do
-                  -- liftIO (print "chomsky")
                   a <- openParentToken
                   b <- args
                   c <- closeParentToken
                   d <- semiColonToken
                   s <- getState
 
-                  -- liftIO (print "antes do exec")
 
                   if(execOn s) then do
-                    -- liftIO (print "exec on")
                     if(not $ isInUserProcs id s) then fail $ invalidProcedureCall id
                     else do
 
-                      -- liftIO (print "bilu askjdhvasiudbvasdteteia")
                       let proce = getUserProc id s
                       
-                      -- liftIO(print "vou testar compatibleArgsP beleza?")
-                      -- liftIO(print "fst b")
-                      -- liftIO(print (fst b))
-                      -- liftIO(print "procemeu cara")
-                      -- liftIO(print proce)
-                      -- liftIO(print "beleza")
                       
                       let tchan = (compatibleArgsP 1 (fst b) proce)
                       let formalArgs = extractThird3 proce
-                      -- liftIO(print "chomsky")
                       if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fst b)) (length (formalArgs)))
                       else do
                         nextStmts <- getInput
-                        -- liftIO (print "pinto")
-                        -- liftIO (print nextStmts)
                         setInput (getBodyFromProc proce ++ nextStmts)
-                        -- liftIO (print "quem sao meus args cara")
-                        -- liftIO (print (fst b))
-                        -- liftIO (print "obriggado cara")
                         execProc proce (fst b)
 
                         return (id:a:(snd b) ++ [c] ++[d])
@@ -238,15 +218,9 @@ functionDecl = do
                 if(isRegister g) then do
                   if(not $ isInUserTypes g s) then fail (invalidUserTypeReturn g)
                   else do
-                    -- liftIO (print "quem eh o body da funcao cara")
-                    -- liftIO (print $ h ++ [i])
-                    -- liftIO (print "obriado raleu cara")
                     updateState (insertUserFunction (b, h ++ [i], getUserType g s, paramsToParse))
                     return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
                 else do
-                  -- liftIO (print "quem eh o body da funcao cara")
-                  -- liftIO (print $ h ++ [i])
-                  -- liftIO (print "obriado raleu cara")
                   updateState (insertUserFunction (b, h ++ [i], tokenToType2 g, paramsToParse))
                   return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
 
@@ -350,26 +324,17 @@ attributeRegisterParser id = do
                         b <- idToken
                         c <- assignToken
                         d <- expression
-                        -- liftIO (print "olha a expressao ai o")
-                        -- liftIO (print d)
                         e <- semiColonToken
                         s <- getState
 
-                        -- liftIO (print "attributeRegisterParser")
-                        -- liftIO (print a)
-                        -- liftIO (print b)
-                        -- liftIO (print c)
-                        -- liftIO (print d)
 
                         -- let j = removeQuotes d -- Usado para tirar "" de string
-                        -- liftIO(print c)
                         if (not (compatible_varDecl a d)) then fail (typeErrorMessage a (fst d))
                         else
                           do
                             s <- getState
                             updateState ( addAttrToUserTypes id (b, fst d) )
                             s <- getState
-                            -- liftIO (print s)
                             return (a:b:[c] ++ (snd d) ++ [e])
 
 
@@ -493,7 +458,6 @@ eval_remaining_matrix m1 operator remain = (do
 
 matrixDecl :: ParsecT [Token] CCureState IO([Token])
 matrixDecl = do
-              -- liftIO (print "matrixDecl")
               -- matrix<linha, coluna, tipo(int ou double)> m = 0;
               mat <- matrixToken
 
@@ -531,14 +495,12 @@ matrixDecl = do
                       let currDepth = getCurrentDepth s
                       let matrixToSave = makeMatrixType (fst lin) (fst col) (fst initVal)
                       updateState (symtable_insert (id, getCurrentScope s, [(currDepth, matrixToSave)]))
-                      -- liftIO (print matrixToSave)
                       return  (mat:[l] ++ (snd lin) ++ [a] ++ (snd col) ++ b:typ:r:id:[assig] ++ (snd initVal) ++[sc])
               else
                 return (mat:[l] ++ (snd lin) ++ [a] ++ (snd col) ++ b:typ:r:id:[assig] ++ (snd initVal) ++[sc])
 
 registerDecl :: ParsecT [Token] CCureState IO([Token])
 registerDecl = do
-              -- liftIO (print "registerDecl")
               a <- typeIdToken
               b <- idToken
               c <- assignToken
@@ -595,34 +557,22 @@ defaultParser typeid id = do
 
 varDecl :: ParsecT [Token] CCureState IO([Token])
 varDecl = do
-            -- liftIO (print "varDecl")
             a <- typeToken
             b <- idToken
             c <- assignToken
             d <- expression
-              -- liftIO (print "olha a expressao ai o")
-              -- liftIO (print d)
             s <- getState
 
             if(execOn s) then do
               -- let j = removeQuotes d -- Usado para tirar "" de string
-              -- liftIO(print c)
               if (not (compatible_varDecl a d)) then fail $ typeErrorMessage a (fst d) 
               else do
-                -- liftIO (print "chomsky")
-                -- liftIO (print b)
-                -- liftIO (print (getCurrentDepth s))
-                -- liftIO (print (getCurrentScope s))
-                -- liftIO (print "chomsky2")
                 if(isInSymTable (b, (getCurrentDepth s), getCurrentScope s) s) then fail (alreadyDeclaredError (getStringFromIdToken b))
                 else do
-                  -- liftIO (print "chomsky3")
                   s <- getState
                   let currentDepth =  getCurrentDepth s
                   updateState (symtable_insert (b, getCurrentScope s, [(currentDepth, fst d)]))
                   s <- getState
-                  -- liftIO (print s)
-                  -- liftIO (print "chomsky4")
                   e <- semiColonToken
                   return (a:b:[c] ++ (snd d) ++ [e])
             else do
@@ -650,7 +600,6 @@ remainingStmts = (do
 
 printPuts :: ParsecT [Token] CCureState IO([Token])
 printPuts = do
-              -- liftIO (print "printPuts")
               a <- putsToken
               b <- openParentToken
               c <- expression
@@ -711,7 +660,6 @@ getStringFromIdToken _        = ""
 
 readStup :: ParsecT [Token] CCureState IO([Token])
 readStup = do
-              -- liftIO (print "readStup")
               a <- stupToken
               b <- openParentToken
               c <- idToken
@@ -773,7 +721,6 @@ readDouble str = readEither str
 
 ifStmt :: ParsecT [Token] CCureState IO([Token])
 ifStmt = do
-            -- liftIO (print "ifStmt")
             a <- ifToken
             b <- enclosed_exp
             s <- getState
@@ -848,17 +795,10 @@ elseOrNothingStmt = (do
                       
 whileStmt :: ParsecT [Token] CCureState IO([Token])
 whileStmt = do
-              -- liftIO (print "whileStmt")
               -- s <- getState
-              -- liftIO(print s)
               pc <- getInput
-              -- liftIO( print pc )
-              -- liftIO(print "oi e us ou um while")
               a <- whileToken
-              -- liftIO(print "oi e us ou um while 2")
-              -- liftIO(print $ getTopScope s)
               b <- enclosed_exp
-              -- liftIO(print "tchau")
 
               s <- getState
 
@@ -870,7 +810,6 @@ whileStmt = do
                   if(get_bool_value (fst b)) then do
                     c <- stmts
                     d <- endWhileToken
-                    -- liftIO(print pc)
 
 
                     s <- getState
@@ -879,7 +818,6 @@ whileStmt = do
                       -- Se foi um break, acaba o loop
                       if((getCurrentLoopStatus s) == BREAK) then do
                         updateState (turnExecOn)
-                        -- liftIO (print $ getCurrentScope s)
                         s <- getState
                         updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
                         updateState (removeFromScopeStack)
@@ -901,7 +839,6 @@ whileStmt = do
                       updateState (removeFromLoopStack)
                       return ([a] ++ (snd b) ++ c ++ [d])
                   else do
-                    -- liftIO(print pc)
                     -- Desativo a execução aqui
                     updateState (turnExecOff)
                     c <- stmts
@@ -919,7 +856,6 @@ whileStmt = do
 
 breakStmt :: ParsecT [Token] CCureState IO([Token])
 breakStmt = do
-              -- liftIO (print "breakStmt")
               a <- breakToken
               b <- semiColonToken
 
@@ -947,17 +883,11 @@ breakStmt = do
 
 returnStmt :: ParsecT [Token] CCureState IO([Token])
 returnStmt = do
-              -- liftIO (print "returnStmt")
               a <- returnToken
               b <- expression
               c <- semiColonToken
               s <- getState
               if(execOn s) then do
-                -- liftIO (print "return")
-                -- liftIO (print s)
-                -- liftIO (print "getejhtiuahetrfwaiehf")
-                -- liftIO (print (getCurrentScope s))
-                -- liftIO (print "????????????")
                 if(getLastScop (getCurrentScope s) == "program") then fail returnOutOfFunctionError
                 else do
                   let ret = getReturnType (getCurrentScope s) s
@@ -974,9 +904,7 @@ getReturnType scope s = getMayb (symtable_get (Id "$ret" (0, 0), getCurrentDepth
 
 assign :: ParsecT [Token] CCureState IO([Token])
 assign = do
-          -- liftIO (print "assign")
           a <- idToken
-          -- liftIO (print "olha aqindmasldm")
           try (registerAssign a)
             <|> (do
               c <- procedureCall a
@@ -991,13 +919,11 @@ assign = do
                     if(not $ isInSymTable (a, (getCurrentDepth s), getCurrentScope s) s) then fail (notDeclaredError (getStringFromIdToken a))
                     else do
                     -- let j = removeQuotes c -- Usado para tirar "" de string
-                    -- liftIO(print c)
                       if (not (compatible (get_type a s, []) c)) then fail (typeErrorMessage (typeToToken(get_type a s)) (fst c))
                       else
                         do
                           updateState (symtable_update (a, getCurrentDepth s, fst c))
                           -- s <- getState
-                          -- liftIO (print s)
                           return (a:[b] ++ (snd c) ++ [d])
                   else
                     return (a:[b] ++ (snd c) ++ [d]))
@@ -1084,9 +1010,7 @@ factor = (do
 
 enclosed_exp :: ParsecT [Token] CCureState IO(Type, [Token])
 enclosed_exp = do
-                -- liftIO(print "antes enclosed")
                 a <- openParentToken
-                -- liftIO(print "depois enclosed")
                 (bType, bTokens) <- expression
                 c <- closeParentToken
                 return (bType, a:bTokens ++ [c])
@@ -1152,34 +1076,25 @@ functionCall id = do
                   c <- closeParentToken
                   s <- getState
 
-                  -- liftIO (print "antes do exec")
 
                   if(execOn s) then do
                     
-                    -- liftIO (print "exec on")
                     if(not $ isInUserFunctions id s) then fail (invalidFunctionCall id)
                     else do
 
-                      -- liftIO (print "bilu teteia")
                       let func = getUserFunc id s
                       let fstb = [(x) | (_, _, _, x) <- fst b]
 
                       let tchan = (compatibleArgs 1 (fstb) func)
                       let formalArgs = extractFourth4 func
-                      -- -- liftIO(print "chomsky")
+                    
                       -- if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fst b)) (length (formalArgs)))
 
                       if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fstb)) (length (formalArgs)))
                       else do
                         nextStmts <- getInput
-                        -- liftIO (print "pinto")
-                        -- liftIO (print nextStmts)
                         setInput (getBodyFromFunc func ++ nextStmts)
-                        -- liftIO (print "quem sao meus args cara")
-                        -- liftIO (print (fst b))
-                        -- liftIO (print "obriggado cara1")
                         returnFromFunc <- execFunction func (fstb)
-                        -- liftIO (print "obriggado cara2")
 
 
                         return (returnFromFunc, id:a:(snd b) ++ [c])
