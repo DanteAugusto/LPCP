@@ -1,0 +1,69 @@
+program
+    int l1 = 0;int c1 = 0;int l2 = 0;int c2 = 0;
+    
+    puts("Digite a quantidade de linhas da primeira matriz: ");
+    stup(l1, int);
+    puts("Digite a quantidade de colunas da primeira matriz: ");
+    stup(c1, int);
+
+    matrix<l1, c1, int> m1 = 0;
+
+    puts("Digite as entradas da primeira matriz: \n");
+    int i = 0;
+    while(i < l1)
+        int j = 0;
+        while(j < c1)
+            -- puts( cast(i, string) + " " + cast(j, string) + ": "); 
+            puts(i);
+            puts(" ");
+            puts(j);
+            puts(": ");
+            stup(m1[i][j], int);
+            j = j + 1;
+        endWhile
+        i = i + 1;
+    endWhile
+
+
+    puts("Digite a quantidade de linhas da segunda matriz: ");
+    stup(l2, int);
+    puts("Digite a quantidade de colunas da segunda matriz: ");
+    stup(c2, int);
+    
+    matrix<l2, c2, int> m2 = 0;
+
+    puts("Digite as entradas da segunda matriz: \n");
+    i = 0;
+    while(i < l2)
+        int j = 0;
+        while(j < c2)
+            puts(i);
+            puts(" ");
+            puts(j);
+            puts(": ");
+            stup(m2[i][j], int);
+            j = j + 1;
+        endWhile
+        i = i + 1;
+    endWhile
+
+    if(l1 == l2 && c1 == c2)
+        puts("Realizar a soma...\n");
+        
+        matrix<l1, c1, int> soma = m1 <+> m2;
+        puts(soma);
+        puts("\n");
+    else
+        puts("Não foi possível realizar a soma.\n");
+    endIf
+    
+    if( c1 == l2 )
+        puts("Realizar a multiplicação...\n");
+
+        matrix<l1, c2, int> mult = m1 <*> m2;
+        puts(mult);
+        puts("\n");
+    else 
+        puts("Não foi possível realizar a multiplicação.\n");
+    endIf
+end

@@ -1,0 +1,14 @@
+
+program
+    int a = 0;
+
+    while(a < 3)
+        if(True)
+            --puts(a);
+            -- a = a + 1;
+            break;
+        else
+            --puts(a);
+        endIf
+    endWhile
+end

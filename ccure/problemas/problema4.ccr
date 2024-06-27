@@ -165,9 +165,4 @@ program
     puts("/");
     puts(j->denominador);
     puts("\n");
-    
-
-
-
-
 end
