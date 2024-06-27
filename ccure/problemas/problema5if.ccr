@@ -15,7 +15,6 @@ subprograms
             endIf
         endIf
     endProc
-
 endSubprograms
 
 program
@@ -30,9 +29,11 @@ program
     puts(a);
     puts(" e ");
     puts(b);
-    puts("?????????\n Isso mesmo, o resultado eh: ");
+    puts("?????????\nIsso mesmo, o resultado eh: ");
     int r = 0;
     mdc(a, b, ref r);
     puts(r);
     puts("\n");
+    --puts(mdcc(a,b));
+    --puts("\n");
 end

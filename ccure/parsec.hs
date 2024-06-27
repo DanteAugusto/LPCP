@@ -808,6 +808,8 @@ ifStmt = do
                   else do
                     d <- elseOrNothingStmt -- passa pelo else com exec off
                     e <- endIfToken -- fim do if
+                    updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
+                    updateState(removeFromScopeStack)
                     return (a:(snd b) ++ c ++ d ++ [e])
 
 
