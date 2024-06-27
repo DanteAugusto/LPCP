@@ -94,6 +94,8 @@ tokens :-
   $lowerAlpha [$alpha $digit \_]*	    { \p s -> Id s (getLC p)}
   $upperAlpha [$alpha $digit \_]*	    { \p s -> TypeId s (getLC p)}
 
+  .                                   { \p s -> Unknown (getLC p) }
+
 {
 -- Each right-hand side has type :: AlexPosn -> String -> Token
 -- Some action helpers:
@@ -165,7 +167,8 @@ data Token =
   BoolLit              Bool   (Int, Int) |
   StringLit            String (Int, Int) |
   Id                   String (Int, Int) |
-  TypeId               String (Int, Int) 
+  TypeId               String (Int, Int) |
+  Unknown               (Int, Int)
   deriving (Eq)
 
 instance Show Token where
@@ -235,6 +238,7 @@ instance Show Token where
   show (If p) = "If"
   show (Else p) = "Else"
   show (EndIf p) = "EndIf"
+  show (Unknown p) = "Unknown Token"
 
 -- "<"                             { \p s -> Lesser (getLC p) }
 --   ">"                             { \p s -> Greater (getLC p) }

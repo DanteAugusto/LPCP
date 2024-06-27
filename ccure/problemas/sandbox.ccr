@@ -1,7 +1,23 @@
+subprograms
+    fun f(int a, int b) -> int
+        a = 19237;
+        return a;
+    endFun
+
+    proc p(int a, int b)
+
+        puts("ihydasghoidbasdkhj\n");
+    endProc
+endSubprograms
 
 program
     int a = 0;
+    
+    double x = asidh;
 
+    puts(a);
+    puts("\n");
+    
     while(a < 3)
         if(True)
             --puts(a);

@@ -6,6 +6,7 @@ module Tokens where
 import Lexer
 import Text.Parsec
 import Data.Sequence (update)
+import Distribution.Simple (Extension(UnknownExtension))
 
 arrowToken :: ParsecT [Token] st IO (Token)
 arrowToken = tokenPrim show update_pos get_token where
@@ -393,4 +394,6 @@ update_pos pos _ ((StringLit _ (l,c)):_) = setSourceLine (setSourceColumn pos c)
 update_pos pos _ ((If p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
 update_pos pos _ ((Else p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
 update_pos pos _ ((EndIf p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+update_pos pos _ ((Unknown p):_) = setSourceLine (setSourceColumn pos (snd p)) (fst p)
+
 update_pos pos _ []      = pos  

@@ -93,7 +93,7 @@ procDecl = do
                 i <- endProcToken
 
                 s <- getState
-                
+
                 -- verify if has duplicate params 
                 let paramsNames = [x | (x, _, _) <- fst d]
                 if (hasDuplicateParams paramsNames) then fail duplicateParamsErrorProc
@@ -115,8 +115,8 @@ procedureCall id = do
                     else do
 
                       let proce = getUserProc id s
-                      
-                      
+
+
                       let tchan = (compatibleArgsP 1 (fst b) proce)
                       let formalArgs = extractThird3 proce
                       if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fst b)) (length (formalArgs)))
@@ -209,17 +209,20 @@ functionDecl = do
 
                 let paramsToParse = [(x, y) | (x, y, _) <- fst d]
                 let paramsNames = [x | (x, _, _) <- fst d]
-
-                if (hasDuplicateParams paramsNames) then fail duplicateParamsError
+                let thereIsRef = [x | (_, _, x) <- fst d]
+                -- verifica se tem parametros por referencia
+                if(or thereIsRef) then fail hasRefInFunction
                 else do
-                  if(isRegister g) then do
-                    if(not $ isInUserTypes g s) then fail (invalidUserTypeReturn g)
-                    else do
-                      updateState (insertUserFunction (b, h ++ [i], getUserType g s, paramsToParse))
-                      return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                  if (hasDuplicateParams paramsNames) then fail duplicateParamsError
                   else do
-                    updateState (insertUserFunction (b, h ++ [i], tokenToType2 g, paramsToParse))
-                    return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                    if(isRegister g) then do
+                      if(not $ isInUserTypes g s) then fail (invalidUserTypeReturn g)
+                      else do
+                        updateState (insertUserFunction (b, h ++ [i], getUserType g s, paramsToParse))
+                        return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
+                    else do
+                      updateState (insertUserFunction (b, h ++ [i], tokenToType2 g, paramsToParse))
+                      return (a:b:[c] ++ (snd d) ++ [e] ++ [f] ++ [g] ++ h ++ [i])
 
 isRegister :: Token -> Bool
 isRegister (TypeId id p) = True
@@ -352,7 +355,7 @@ registerAccess id = do
                         let currDepth = getCurrentDepth s
                         let reg = getMayb (symtable_get (id, currDepth) s)
                         -- Verificar se reg é um RegisterType
-                        if(not $ isRegisterType reg) then do error (isNotRegisterType id)
+                        if(not $ isRegisterType reg) then do fail (isNotRegisterType id)
                         else do
                           -- Verificar se b é um atributo de reg
                           if(not $ isRegAttr b reg ) then fail (invalidRegisterAccess (typeToToken reg) b)
@@ -517,7 +520,7 @@ registerDecl = do
                       if(execOn s) then do
                         if(not $ isInUserTypes a s) then fail (invalidUserType a)
                         else do
-                          
+
                           -- Check if b was already declared
                           if(isInSymTable (b, (getCurrentDepth s), getCurrentScope s) s) then fail (alreadyDeclaredError (getStringFromIdToken b))
                           else do
@@ -567,7 +570,7 @@ varDecl = do
 
             if(execOn s) then do
               -- let j = removeQuotes d -- Usado para tirar "" de string
-              if (not (compatible_varDecl a d)) then fail $ typeErrorMessage a (fst d) 
+              if (not (compatible_varDecl a d)) then fail $ typeErrorMessage a (fst d)
               else do
                 if(isInSymTable (b, (getCurrentDepth s), getCurrentScope s) s) then fail (alreadyDeclaredError (getStringFromIdToken b))
                 else do
@@ -739,18 +742,18 @@ ifStmt = do
               else do
                 if(get_bool_value (fst b)) then do -- se a condicao do if eh true
                   updateState (addToScopeStack "if") -- adiciona o escopo do if
-                 
+
                   c <- stmts -- executa os stmts
-                  
+
                   s <- getState
-                  if(execOn s) then do 
+                  if(execOn s) then do
                     updateState(turnExecOff) -- desativa a execução pra passar pelo else
 
                     d <- elseOrNothingStmt -- passa pelo else com exec off
                     e <- endIfToken -- fim do if
-                      
+
                     updateState(turnExecOn) -- liga a exec dnv
-                    
+
                     s <- getState
                     updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
                     updateState(removeFromScopeStack)
@@ -772,12 +775,12 @@ ifStmt = do
                   updateState (addToScopeStack "else") -- adiciona o else no escopo
                   d <- elseOrNothingStmt
                   e <- endIfToken
-                  
+
                   s <- getState
                   updateState (symtable_remove_scope (getCurrentScope s) (getCurrentDepth s))
                   updateState (removeFromScopeStack) -- remove o else do escopo
-                  
-                  return (a:(snd b) ++ c ++ d ++ [e]) 
+
+                  return (a:(snd b) ++ c ++ d ++ [e])
             else do
               c <- stmts
               d <- elseOrNothingStmt
@@ -795,7 +798,7 @@ elseOrNothingStmt = (do
                         b <- stmts
                         return (a:b))
                       <|> return []
-                      
+
 whileStmt :: ParsecT [Token] CCureState IO([Token])
 whileStmt = do
               -- s <- getState
@@ -1080,18 +1083,17 @@ functionCall id = do
                   c <- closeParentToken
                   s <- getState
 
-
                   if(execOn s) then do
-                    
+
                     if(not $ isInUserFunctions id s) then fail (invalidFunctionCall id)
                     else do
 
                       let func = getUserFunc id s
                       let fstb = [(x) | (_, _, _, x) <- fst b]
 
-                      let tchan = (compatibleArgs 1 (fstb) func)
+                      let tchan = (compatibleArgs 1 (fst b) func)
                       let formalArgs = extractFourth4 func
-                    
+
                       -- if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fst b)) (length (formalArgs)))
 
                       if((extractFirst4 tchan) /= 0) then fail (invalidArgsProcedure tchan (length (fstb)) (length (formalArgs)))
@@ -1181,11 +1183,11 @@ args = try (do
 remainingArgs :: ParsecT [Token] CCureState IO([(Token, String, Int, Type)], [Token])
 remainingArgs = try (do
                   comma <- commaToken
-                  try (do 
+                  try (do
                         a <- expression
                         b <- remainingArgs
-                        return ((Id "$notref" (0,0), "noscope", -1, fst a):(fst b), [comma] ++ (snd a) ++ (snd b))) 
-                   <|> 
+                        return ((Id "$notref" (0,0), "noscope", -1, fst a):(fst b), [comma] ++ (snd a) ++ (snd b)))
+                   <|>
                     (do
                       ref <- refToken
                       id <- idToken

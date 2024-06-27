@@ -78,13 +78,14 @@ getUserProcAux _ _ = error "getUserProcAux: unexpected pattern"
 -- 1 - Número de argumentos menor ou maior que o esperado
 -- 4 - Argumento incompatível
 
-compatibleArgs :: Int -> [Type] -> UserFunction -> (Int, Int, Type, Type) -- (Erro, NumParametro, Tipo Real, Tipo Formal)
+compatibleArgs :: Int -> [(Token, String, Int, Type)] -> UserFunction -> (Int, Int, Type, Type) -- (Erro, NumParametro, Tipo Real, Tipo Formal)
 compatibleArgs _ [] (_, _, _, []) = (0, 0, NULL, NULL)
 compatibleArgs i [] _ = (1, i, NULL, NULL)
 compatibleArgs i _ (_, _, _, []) = (1, i, NULL, NULL)
-compatibleArgs i (a:as) (c, d, e, (_, b):bs) = 
+compatibleArgs i ((Id "$notref" _, _, _, a):as) (c, d, e, (_, b):bs) = 
   if( compatible (a, []) (b, []) ) then compatibleArgs (i + 1) as (c, d, e, bs)
   else (4, i, a, b)
+compatibleArgs i ((_, _, _, a):as)         (c, d, e, (_, b):bs) = (3, i, NULL, NULL)
 
 -- Tipos de erros
 -- 0 - Sem erro

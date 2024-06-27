@@ -44,6 +44,9 @@ invalidArgsProcedure (2, i, _, _) _ _ = "Argument " ++ show i ++ " expected to b
 invalidArgsProcedure (3, i, _, _) _ _ = "Argument " ++ show i ++ " expected to be passed by value."
 invalidArgsProcedure (4, i, a, b) _ _ = "Argument " ++ show i ++ " expected to be of type " ++ show (typeToToken b) ++ " but received " ++ show (typeToToken a) ++ "."
 
+hasRefInFunction :: String
+hasRefInFunction = "Function cannot have reference parameters."
+
 typeErrorDefaultRegister :: Token -> Token -> String
 typeErrorDefaultRegister expectedType receivedType = "Type error on Default constructor: expected " ++ show expectedType ++ " but received " ++ show receivedType ++ "."
 
